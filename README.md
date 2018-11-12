@@ -1,6 +1,6 @@
 ## About
 
-Description would be here soon...
+Description will be here soon...
 
 ## Usage
 
