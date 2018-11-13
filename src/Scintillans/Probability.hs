@@ -51,7 +51,6 @@ wqed b x y = if y >= x || y <= 0 || z > aiMaxArg then 0 else w
 -- Full probability of the photon emission... Computed numerically...
 uqed :: Int -> Double -> Double -> Double
 uqed n b x = trapRule (wqed b x) x' (x - dx) (n - 1) + pec
-  --where x' = x / (1 + 8 * chi) -- y < x' => arg of Ai >= 4
   where x' = x / (1 + 8 * chi) -- y < x' => arg of Ai >= 4
         dx = (x - x') / fromIntegral n
         -- pec is the approximate value of int_(x - dx)^x (...)
@@ -62,12 +61,3 @@ uqed n b x = trapRule (wqed b x) x' (x - dx) (n - 1) + pec
             6 * ((x * chi)**2 * dx)**(1 / 3)))
             --}
         chi = b * x
-
-        --pec = -6 * alpha / (b * x * x) * (airy_Ai_deriv 0 PrecSingle) * (chi * x)**(2 / 3) * dx**(1 / 3)
-        --}
-  {--
-  where x' = x / (1 + 8 * chi) -- y < x' => arg of Ai >= 4
-        dx = 1e-5 -- (x - x') / fromIntegral n
-        pec = 0 ---6 * alpha / (b * x * x) * (airy_Ai_deriv 0 PrecSingle) * (chi * x)**(2 / 3) * dx**(1 / 3)
-        chi = b * x
-        --}
