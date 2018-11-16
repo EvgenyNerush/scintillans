@@ -33,10 +33,10 @@ dt = (1 / fromIntegral n) :: Double
 [x, y, u, v] = R.toList $ R.map (\(M11 x) -> x) $ S.exp hatA dt n
 
 accuracy = 15 / fromIntegral n -- Euler's absolute accuracy is proportional to 1 / n
-res = abs(x - exp a) < accuracy
-   && abs(y - b * (exp a - exp 1) / (a - 1)) < accuracy
+res = (abs $ x - exp a) < accuracy
+   && (abs $ y - b * (exp a - exp 1) / (a - 1)) < accuracy
    && u == 0
-   && abs(v - exp 1) < accuracy
+   && (abs $ v - exp 1) < accuracy
 
 main =
   if res then

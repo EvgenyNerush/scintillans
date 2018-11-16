@@ -13,3 +13,6 @@ IntAiTest: $(OBJS) IntAiTest.hs
 
 WTest: $(OBJS) WTest.hs
 	stack build && stack ghc -- --make WTest.hs && ./WTest
+
+ProbabilityTestClassical: $(OBJ) ProbabilityTestClassical.hs
+	stack build && stack ghc -- --make ProbabilityTestClassical.hs && ./ProbabilityTestClassical
