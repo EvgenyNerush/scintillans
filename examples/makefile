@@ -1,6 +1,6 @@
 OBJS = ../src/Scintillans/BlockMatrix.hs ../src/Scintillans/Solver.hs makefile
 
-all: BlockMatrixTest SolverTest IntAiTest WTest
+all: BlockMatrixTest SolverTest IntAiTest WTest SynchrotronTestClassical
 
 BlockMatrixTest: $(OBJS) BlockMatrixTest.hs
 	stack build && stack ghc -- -Odph -rtsopts -eventlog -fno-liberate-case -funfolding-use-threshold1000 -funfolding-keeness-factor1000 -fllvm -optlo-O3 --make BlockMatrixTest.hs && ./BlockMatrixTest +RTS -l
@@ -14,5 +14,5 @@ IntAiTest: $(OBJS) IntAiTest.hs
 WTest: $(OBJS) WTest.hs
 	stack build && stack ghc -- --make WTest.hs && ./WTest
 
-ProbabilityTestClassical: $(OBJ) ProbabilityTestClassical.hs
-	stack build && stack ghc -- --make ProbabilityTestClassical.hs && ./ProbabilityTestClassical
+SynchrotronTestClassical: $(OBJ) SynchrotronTestClassical.hs
+	stack build && stack ghc -- -Odph -rtsopts -eventlog -fno-liberate-case -funfolding-use-threshold1000 -funfolding-keeness-factor1000 -fllvm -optlo-O3 --make SynchrotronTestClassical.hs && ./SynchrotronTestClassical +RTS -l

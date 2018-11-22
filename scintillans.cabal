@@ -12,8 +12,8 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Scintillans.BlockMatrix
-                     , Scintillans.Probability
                      , Scintillans.Solver
+                     , Scintillans.Synchrotron
   build-depends:       base >=4.9
                      , repa >= 3.0
                      , vector

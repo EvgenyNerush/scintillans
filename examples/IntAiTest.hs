@@ -1,4 +1,4 @@
-import Scintillans.Probability
+import Scintillans.Synchrotron
 
 -- \int_x^\infty Ai(y) dy for different values of x
 intAi_0   = 0.33333

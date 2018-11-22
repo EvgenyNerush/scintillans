@@ -1,4 +1,4 @@
-module Scintillans.Probability where
+module Scintillans.Synchrotron where
 
 import qualified Data.Array.Repa as R
 import Numeric.GSL.Special.Airy
@@ -45,26 +45,33 @@ intAi :: Double -> Double
 intAi x = if x > aiMaxArg then 0 else trapRule (\y -> airy_Ai y PrecSingle) x x' 17
   where x' = if x < 25 / 16 then x + 4 else x + 5 / sqrt x
 
-
--- Probability rate for the photon emission...
-wqed :: Double -> Double -> Double -> Double
-wqed b x y = if y >= x || y <= 0 || z > aiMaxArg then 0 else w
+-- Probability rate for the photon emission... y>= x...
+--w b x y = if y >= x || y <= 0 || z > aiMaxArg then 0 else w
+w :: Double -> Double -> Double -> Double
+--w b x y = if y >= x || y <= 0 || z > aiMaxArg then 0 else w
+w b x y = if z > aiMaxArg then 0
+          else -alpha / (b * x * x) * (intAi z + v * airy_Ai_deriv z PrecSingle)
   where chi = b * x
         z = ((x - y) / (y * chi)) ** (2 / 3)
         v = 2 / z + (x - y) / x * chi * sqrt z
-        w = - alpha / (b * x * x) * (intAi z + v * airy_Ai_deriv z PrecSingle)
+
+-- Part of the full probability rate near the singularity..., int_(x-dx)^x...
+-- here we assume dx << x
+s :: Double -> Double -> Double -> Double
+s b x dx = -alpha / (b * x * x) * (dx * intAi 0
+  + 6 * airy_Ai_deriv 0 PrecSingle * ((b * x * x)**2 * dx)**(1 / 3))
 
 -- Full probability of the photon emission... Computed numerically...
-uqed :: Int -> Double -> Double -> Double
-uqed n b x = if x == 0 then 0 else trapRule (wqed b x) x' (x - dx) (n - 1) + pec
-  where x' = x / (1 + 8 * chi) -- y < x' => arg of Ai >= 4
+u :: Int -> Double -> Double -> Double
+u n b x = s b x dx + trapRule (w b x) x' (x - dx) (n - 1)
+  where x' = x / (1 + 8 * b * x) -- y < x' => arg of Ai >= 4
         dx = (x - x') / fromIntegral n
-        -- pec is the approximate value of int_(x - dx)^x (...)
-        pec = -alpha / (b * x * x) * (
-          dx * intAi 0 +
-          airy_Ai_deriv 0 PrecSingle * (
-            0.5 * ((dx / x)**5 * chi)**(1/3) +
-            6 * ((x * chi)**2 * dx)**(1 / 3)))
+
+-- The emission power. There is no singularity in the power distribution, moreover,
+-- w(x -> y) * (x - y) = 0 at y = x.
+p n b x = trapRule dpdy x' x n
+  where dpdy y = if y /= x then (x - y) * w b x y else 0
+        x' = x / (1 + 8 * chi)
         chi = b * x
 
 -----------------------------------------------------------------------
@@ -78,19 +85,17 @@ uqed n b x = if x == 0 then 0 else trapRule (wqed b x) x' (x - dx) (n - 1) + pec
 
 -- Note that the matrices here are of the R.D type and should be computed before use in the Solver
 
-hatUqed :: Int -> Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
-hatUqed s b x1 xn n = R.fromFunction (R.Z R.:. n R.:. n) $ \(R.Z R.:. i R.:. j) -> if i == j then u i else 0
--- fromIntegral i else 0
--- u i else 0
-  where u i = uqed s b $ x1 + fromIntegral i * dx
-        dx = (xn - x1) / fromIntegral (n - 1)
+hatW :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
+hatW b xa xb n = R.fromFunction (R.Z R.:. n R.:. n)
+  $ \(R.Z R.:. i R.:. j) ->
+    if j > i then dx * w b (x j) (x i) else 0
+  where x k = xa + dx * fromIntegral k
+        dx = (xb - xa) / fromIntegral (n - 1)
 
-hatWqed :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
-hatWqed b x1 xn n = R.fromFunction (R.Z R.:. n R.:. n) $ \(R.Z R.:. i R.:. j) -> if j > i then dx * wqed b (x j) (x i) else 0
--- then 1 else 0
--- dx * wqed b (x j) (x i)
-  where x k = x1 + fromIntegral k * dx
-        dx = (xn - x1) / fromIntegral (n - 1)
+hatU :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
+hatU b xa xb n = R.fromFunction (R.Z R.:. n R.:. n)
+  $ \(R.Z R.:. i R.:. j) -> if i /= j then 0 else
+    R.sumAllS $ R.slice (hatW b xa xb n) (R.Any R.:. j)
 
-hatAqed :: Int -> Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
-hatAqed s b x1 xn n = hatWqed b x1 xn n R.-^ hatUqed s b x1 xn n
+hatA :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
+hatA b xa xb n = hatW b xa xb n R.-^ hatU b xa xb n
