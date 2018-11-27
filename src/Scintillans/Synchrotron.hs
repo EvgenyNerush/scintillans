@@ -99,3 +99,32 @@ hatU b xa xb n = R.fromFunction (R.Z R.:. n R.:. n)
 
 hatA :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
 hatA b xa xb n = hatW b xa xb n R.-^ hatU b xa xb n
+
+-- RHS for two-component BE, \partial_t f = \hat A f, where
+--
+--     |        |
+--     |  f_e   |
+-- f = |________|
+--     |        |
+--     | f_{ph} |
+--     |        |
+--
+-- is a vector (column) and
+--
+--          |        |        |
+--          | A_{00} | A_{01} |
+-- \hat A = |________|________|,
+--          |        |        |
+--          | A_{10} | A_{11} |
+--          |        |        |
+--
+-- where A_{00} can be computed with hatA function above.
+-- Note that in the matrix representation A_{00}, A{01} and f_e concern the electrons with energy from
+-- x_a to x_b, and A_{10}, A_{11} and f_{ph} concern the photons with energy from 0 to x_b - x_a
+-- (inclusive). The number of nodes in f_e and f_{ph} is the same.
+
+hatA10 :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
+hatA10 b xa xb n = R.traverse
+  (hatW b xa xb n)
+  (\_ -> (R.Z R.:. n R.:. n))
+  (\lf (R.Z R.:. i R.:. j) -> lf (R.Z R.:. (n - i) R.:. j))
