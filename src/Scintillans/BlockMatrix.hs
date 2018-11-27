@@ -18,8 +18,8 @@ data Matrix12 a = M12 !a !a
 --                            | y |
 data Matrix21 a = M21 !a !a
 
--- M22 a11 a12 a21 a22 = | a11 a12 |
---                       | a21 a22 |
+-- M22 a00 a01 a10 a11 = | a00 a01 |
+--                       | a10 a11 |
 data Matrix22 a = M22 !a !a !a !a
 
 data Matrix13 a = M13 !a !a !a
@@ -27,6 +27,10 @@ data Matrix13 a = M13 !a !a !a
 data Matrix31 a = M31 !a !a !a
 
 data Matrix33 a = M33 !a !a !a !a !a !a !a !a !a
+
+------------
+-- Multables
+------------
 
 -- class to express matrices which can be multiplied
 class Multable a b c | a b -> c where
@@ -39,12 +43,8 @@ instance Num a => Multable (Matrix13 a) (Matrix31 a) (Matrix11 a) where
 instance Num a => Multable (Matrix11 a) (Matrix11 a) (Matrix11 a) where
   mult (M11 x) (M11 y) = M11 (x * y)
 
-instance Functor Matrix11 where
-    fmap f (M11 x) = M11 $ f x
-
-instance Num a => Num (Matrix11 a) where
-    (+) (M11 x) (M11 y) = M11 (x + y)
-    fromInteger x = M11 $ fromInteger x
+instance Num a => Multable (Matrix22 a) (Matrix21 a) (Matrix21 a) where
+  mult (M22 x y z t) (M21 u v) = M21 (x * u + y * v) (z * u + t * v)
 
 -- identity matrix
 idMatrix :: (Num a, Unbox a) => Int -> R.Array R.U R.DIM2 a
@@ -63,6 +63,13 @@ mmultS arr brr
 -----------
 -- Matrix11
 -----------
+
+instance Functor Matrix11 where
+    fmap f (M11 x) = M11 $ f x
+
+instance Num a => Num (Matrix11 a) where
+    (+) (M11 x) (M11 y) = M11 (x + y)
+    fromInteger x = M11 $ fromInteger x
 
 newtype instance MVector s (Matrix11 a) = MV_Matrix11 (MVector s a)
 newtype instance Vector    (Matrix11 a) = V_Matrix11  (Vector    a)
@@ -218,3 +225,56 @@ instance (Unbox a) => G.Vector Vector (Matrix31 a) where
   basicUnsafeCopy (MV_Matrix31 mv) (V_Matrix31 v)
                 = G.basicUnsafeCopy mv v
   elemseq _ (M31 x y z) t = x `seq` y `seq` z `seq` t
+
+-----------
+-- Matrix22
+-----------
+
+newtype instance MVector s (Matrix22 a) = MV_Matrix22 (MVector s (a, a, a, a))
+newtype instance Vector    (Matrix22 a) = V_Matrix22  (Vector    (a, a, a, a))
+
+instance (Unbox a) => Unbox (Matrix22 a)
+
+instance (Unbox a) => M.MVector MVector (Matrix22 a) where
+  {-# INLINE basicLength #-}
+  {-# INLINE basicUnsafeSlice #-}
+  {-# INLINE basicOverlaps #-}
+  {-# INLINE basicUnsafeNew #-}
+  {-# INLINE basicInitialize #-}
+  {-# INLINE basicUnsafeReplicate #-}
+  {-# INLINE basicUnsafeRead #-}
+  {-# INLINE basicUnsafeWrite #-}
+  {-# INLINE basicClear #-}
+  {-# INLINE basicSet #-}
+  {-# INLINE basicUnsafeCopy #-}
+  {-# INLINE basicUnsafeGrow #-}
+  basicLength (MV_Matrix22 v) = M.basicLength v
+  basicUnsafeSlice i n (MV_Matrix22 v) = MV_Matrix22 $ M.basicUnsafeSlice i n v
+  basicOverlaps (MV_Matrix22 v1) (MV_Matrix22 v2) = M.basicOverlaps v1 v2
+  basicUnsafeNew n = MV_Matrix22 `liftM` M.basicUnsafeNew n
+  basicInitialize (MV_Matrix22 v) = M.basicInitialize v
+  basicUnsafeReplicate n (M22 x y z t) = MV_Matrix22 `liftM` M.basicUnsafeReplicate n (x, y, z, t)
+  basicUnsafeRead (MV_Matrix22 v) i = (\(x, y, z, t) -> M22 x y z t) `liftM` M.basicUnsafeRead v i
+  basicUnsafeWrite (MV_Matrix22 v) i (M22 x y z t) = M.basicUnsafeWrite v i (x, y, z, t)
+  basicClear (MV_Matrix22 v) = M.basicClear v
+  basicSet (MV_Matrix22 v) (M22 x y z t) = M.basicSet v (x, y, z, t)
+  basicUnsafeCopy (MV_Matrix22 v1) (MV_Matrix22 v2) = M.basicUnsafeCopy v1 v2
+  basicUnsafeMove (MV_Matrix22 v1) (MV_Matrix22 v2) = M.basicUnsafeMove v1 v2
+  basicUnsafeGrow (MV_Matrix22 v) n = MV_Matrix22 `liftM` M.basicUnsafeGrow v n
+
+instance (Unbox a) => G.Vector Vector (Matrix22 a) where
+  {-# INLINE basicUnsafeFreeze #-}
+  {-# INLINE basicUnsafeThaw #-}
+  {-# INLINE basicLength #-}
+  {-# INLINE basicUnsafeSlice #-}
+  {-# INLINE basicUnsafeIndexM #-}
+  {-# INLINE elemseq #-}
+  basicUnsafeFreeze (MV_Matrix22 v) = V_Matrix22 `liftM` G.basicUnsafeFreeze v
+  basicUnsafeThaw (V_Matrix22 v) = MV_Matrix22 `liftM` G.basicUnsafeThaw v
+  basicLength (V_Matrix22 v) = G.basicLength v
+  basicUnsafeSlice i n (V_Matrix22 v) = V_Matrix22 $ G.basicUnsafeSlice i n v
+  basicUnsafeIndexM (V_Matrix22 v) i
+                = (\(x, y, z, t) -> M22 x y z t) `liftM` G.basicUnsafeIndexM v i
+  basicUnsafeCopy (MV_Matrix22 mv) (V_Matrix22 v)
+                = G.basicUnsafeCopy mv v
+  elemseq _ (M22 x y z t) u = x `seq` y `seq` z `seq` t `seq` u
