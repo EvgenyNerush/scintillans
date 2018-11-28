@@ -121,10 +121,23 @@ hatA b xa xb n = hatW b xa xb n R.-^ hatU b xa xb n
 -- where A_{00} can be computed with hatA function above.
 -- Note that in the matrix representation A_{00}, A{01} and f_e concern the electrons with energy from
 -- x_a to x_b, and A_{10}, A_{11} and f_{ph} concern the photons with energy from 0 to x_b - x_a
--- (inclusive). The number of nodes in f_e and f_{ph} is the same.
+-- (inclusive). The number of nodes in f_e and f_{ph} is the same. It is natural to take into
+-- account this energy interval for the photons, as long as for the electrons we use [x_a,
+-- x_b].
+-- Note that it is assumed thet the electron distribution function is far from x_a, because the
+-- electrons and the photon emission are not treated correctly near x_a.
 
+-- this function makes a permutation of hatW elements, e.g.
+-- | 0  1->0  2->0  3->0 |      | 0   0     0     0   |
+-- | 0   0    2->1  3->1 |      | 0  1->0  2->1  3->2 |
+-- | 0   0     0    3->2 |  =>  | 0   0    2->0  3->1 |,
+-- | 0   0     0     0   |      | 0   0     0    3->0 |
+-- where, for instance, 3->2 means w(xa + 3 dx -> xa + 2 * dx). This ensures the energy
+-- conservation (?).
 hatA10 :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
 hatA10 b xa xb n = R.traverse
   (hatW b xa xb n)
   (\_ -> (R.Z R.:. n R.:. n))
-  (\lf (R.Z R.:. i R.:. j) -> lf (R.Z R.:. (n - i) R.:. j))
+  (\lf (R.Z R.:. i R.:. j) -> if j >= i
+                              then lf (R.Z R.:. (j - i) R.:. j)
+                              else 0)

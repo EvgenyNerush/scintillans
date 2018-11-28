@@ -32,7 +32,7 @@ data Matrix33 a = M33 !a !a !a !a !a !a !a !a !a
 -- Multables
 ------------
 
--- class to express matrices which can be multiplied
+-- class to express block matrices which can be multiplied
 class Multable a b c | a b -> c where
   mult :: a -> b -> c
 
@@ -46,15 +46,21 @@ instance Num a => Multable (Matrix11 a) (Matrix11 a) (Matrix11 a) where
 instance Num a => Multable (Matrix22 a) (Matrix21 a) (Matrix21 a) where
   mult (M22 x y z t) (M21 u v) = M21 (x * u + y * v) (z * u + t * v)
 
--- identity matrix
+instance Num a => Multable (Matrix22 a) (Matrix22 a) (Matrix22 a) where
+  mult (M22 x y z t) (M22 u v w s) =
+    M22 (x * u + y * w) (x * v + y * s) (z * u + t * w) (z * v + t * s)
+
+-- identity matrix, smth should be added to its type because fromInteger should be called for
+-- square matrices only
 idMatrix :: (Num a, Unbox a) => Int -> R.Array R.U R.DIM2 a
-idMatrix h = R.computeS $ R.fromFunction (R.Z R.:. h R.:. h) $ \(R.Z R.:. i R.:. j) ->
+idMatrix n = R.computeS $ R.fromFunction (R.Z R.:. n R.:. n) $ \(R.Z R.:. i R.:. j) ->
   if i == j then fromInteger 1 else fromInteger 0
 
--- Matrix multiplication, as in linear algebra.
+-- Multiplication of Repa matrices, as in linear algebra. The type contained in the resulting
+-- matrix should be an instance of Num and provide (+).
 mmultS :: (Unbox a, Unbox b, Unbox c, Num c, Multable a b c) => R.Array R.U R.DIM2 a -> R.Array R.U R.DIM2 b -> R.Array R.U R.DIM2 c
 mmultS arr brr
-  | wa /= hb  = error "Firefly.BlockMatrix mmultS: width of the first matrix != height of the second one."
+  | wa /= hb  = error "Scintillans.BlockMatrix mmultS: width of the first matrix != height of the second one."
   | otherwise = arr `R.deepSeqArray` brr `R.deepSeqArray` (R.computeS $ R.fromFunction (R.Z R.:. ha R.:. wb) $ \(R.Z R.:. i R.:. j) -> R.sumAllS $ R.zipWith mult
     (R.slice arr (R.Any R.:. i R.:. R.All)) (R.slice brr (R.Any R.:. j)))
     where (R.Z R.:. ha R.:. wa) = R.extent arr
@@ -227,8 +233,125 @@ instance (Unbox a) => G.Vector Vector (Matrix31 a) where
   elemseq _ (M31 x y z) t = x `seq` y `seq` z `seq` t
 
 -----------
+-- Matrix12
+-----------
+
+newtype instance MVector s (Matrix12 a) = MV_Matrix12 (MVector s (a, a))
+newtype instance Vector    (Matrix12 a) = V_Matrix12  (Vector    (a, a))
+
+instance (Unbox a) => Unbox (Matrix12 a)
+
+instance (Unbox a) => M.MVector MVector (Matrix12 a) where
+  {-# INLINE basicLength #-}
+  {-# INLINE basicUnsafeSlice #-}
+  {-# INLINE basicOverlaps #-}
+  {-# INLINE basicUnsafeNew #-}
+  {-# INLINE basicInitialize #-}
+  {-# INLINE basicUnsafeReplicate #-}
+  {-# INLINE basicUnsafeRead #-}
+  {-# INLINE basicUnsafeWrite #-}
+  {-# INLINE basicClear #-}
+  {-# INLINE basicSet #-}
+  {-# INLINE basicUnsafeCopy #-}
+  {-# INLINE basicUnsafeGrow #-}
+  basicLength (MV_Matrix12 v) = M.basicLength v
+  basicUnsafeSlice i n (MV_Matrix12 v) = MV_Matrix12 $ M.basicUnsafeSlice i n v
+  basicOverlaps (MV_Matrix12 v1) (MV_Matrix12 v2) = M.basicOverlaps v1 v2
+  basicUnsafeNew n = MV_Matrix12 `liftM` M.basicUnsafeNew n
+  basicInitialize (MV_Matrix12 v) = M.basicInitialize v
+  basicUnsafeReplicate n (M12 x y) = MV_Matrix12 `liftM` M.basicUnsafeReplicate n (x, y)
+  basicUnsafeRead (MV_Matrix12 v) i = (\(x, y) -> M12 x y) `liftM` M.basicUnsafeRead v i
+  basicUnsafeWrite (MV_Matrix12 v) i (M12 x y) = M.basicUnsafeWrite v i (x, y)
+  basicClear (MV_Matrix12 v) = M.basicClear v
+  basicSet (MV_Matrix12 v) (M12 x y) = M.basicSet v (x, y)
+  basicUnsafeCopy (MV_Matrix12 v1) (MV_Matrix12 v2) = M.basicUnsafeCopy v1 v2
+  basicUnsafeMove (MV_Matrix12 v1) (MV_Matrix12 v2) = M.basicUnsafeMove v1 v2
+  basicUnsafeGrow (MV_Matrix12 v) n = MV_Matrix12 `liftM` M.basicUnsafeGrow v n
+
+instance (Unbox a) => G.Vector Vector (Matrix12 a) where
+  {-# INLINE basicUnsafeFreeze #-}
+  {-# INLINE basicUnsafeThaw #-}
+  {-# INLINE basicLength #-}
+  {-# INLINE basicUnsafeSlice #-}
+  {-# INLINE basicUnsafeIndexM #-}
+  {-# INLINE elemseq #-}
+  basicUnsafeFreeze (MV_Matrix12 v) = V_Matrix12 `liftM` G.basicUnsafeFreeze v
+  basicUnsafeThaw (V_Matrix12 v) = MV_Matrix12 `liftM` G.basicUnsafeThaw v
+  basicLength (V_Matrix12 v) = G.basicLength v
+  basicUnsafeSlice i n (V_Matrix12 v) = V_Matrix12 $ G.basicUnsafeSlice i n v
+  basicUnsafeIndexM (V_Matrix12 v) i
+                = (\(x, y) -> M12 x y) `liftM` G.basicUnsafeIndexM v i
+  basicUnsafeCopy (MV_Matrix12 mv) (V_Matrix12 v)
+                = G.basicUnsafeCopy mv v
+  elemseq _ (M12 x y) z = x `seq` y `seq` z
+
+-----------
+-- Matrix21
+-----------
+
+instance Num a => Num (Matrix21 a) where
+    (+) (M21 x y) (M21 z t) = M21 (x + z) (y + t)
+    fromInteger x = M21 (fromInteger x) (fromInteger x)
+
+newtype instance MVector s (Matrix21 a) = MV_Matrix21 (MVector s (a, a))
+newtype instance Vector    (Matrix21 a) = V_Matrix21  (Vector    (a, a))
+
+instance (Unbox a) => Unbox (Matrix21 a)
+
+instance (Unbox a) => M.MVector MVector (Matrix21 a) where
+  {-# INLINE basicLength #-}
+  {-# INLINE basicUnsafeSlice #-}
+  {-# INLINE basicOverlaps #-}
+  {-# INLINE basicUnsafeNew #-}
+  {-# INLINE basicInitialize #-}
+  {-# INLINE basicUnsafeReplicate #-}
+  {-# INLINE basicUnsafeRead #-}
+  {-# INLINE basicUnsafeWrite #-}
+  {-# INLINE basicClear #-}
+  {-# INLINE basicSet #-}
+  {-# INLINE basicUnsafeCopy #-}
+  {-# INLINE basicUnsafeGrow #-}
+  basicLength (MV_Matrix21 v) = M.basicLength v
+  basicUnsafeSlice i n (MV_Matrix21 v) = MV_Matrix21 $ M.basicUnsafeSlice i n v
+  basicOverlaps (MV_Matrix21 v1) (MV_Matrix21 v2) = M.basicOverlaps v1 v2
+  basicUnsafeNew n = MV_Matrix21 `liftM` M.basicUnsafeNew n
+  basicInitialize (MV_Matrix21 v) = M.basicInitialize v
+  basicUnsafeReplicate n (M21 x y) = MV_Matrix21 `liftM` M.basicUnsafeReplicate n (x, y)
+  basicUnsafeRead (MV_Matrix21 v) i = (\(x, y) -> M21 x y) `liftM` M.basicUnsafeRead v i
+  basicUnsafeWrite (MV_Matrix21 v) i (M21 x y) = M.basicUnsafeWrite v i (x, y)
+  basicClear (MV_Matrix21 v) = M.basicClear v
+  basicSet (MV_Matrix21 v) (M21 x y) = M.basicSet v (x, y)
+  basicUnsafeCopy (MV_Matrix21 v1) (MV_Matrix21 v2) = M.basicUnsafeCopy v1 v2
+  basicUnsafeMove (MV_Matrix21 v1) (MV_Matrix21 v2) = M.basicUnsafeMove v1 v2
+  basicUnsafeGrow (MV_Matrix21 v) n = MV_Matrix21 `liftM` M.basicUnsafeGrow v n
+
+instance (Unbox a) => G.Vector Vector (Matrix21 a) where
+  {-# INLINE basicUnsafeFreeze #-}
+  {-# INLINE basicUnsafeThaw #-}
+  {-# INLINE basicLength #-}
+  {-# INLINE basicUnsafeSlice #-}
+  {-# INLINE basicUnsafeIndexM #-}
+  {-# INLINE elemseq #-}
+  basicUnsafeFreeze (MV_Matrix21 v) = V_Matrix21 `liftM` G.basicUnsafeFreeze v
+  basicUnsafeThaw (V_Matrix21 v) = MV_Matrix21 `liftM` G.basicUnsafeThaw v
+  basicLength (V_Matrix21 v) = G.basicLength v
+  basicUnsafeSlice i n (V_Matrix21 v) = V_Matrix21 $ G.basicUnsafeSlice i n v
+  basicUnsafeIndexM (V_Matrix21 v) i
+                = (\(x, y) -> M21 x y) `liftM` G.basicUnsafeIndexM v i
+  basicUnsafeCopy (MV_Matrix21 mv) (V_Matrix21 v)
+                = G.basicUnsafeCopy mv v
+  elemseq _ (M21 x y) z = x `seq` y `seq` z
+
+-----------
 -- Matrix22
 -----------
+
+instance Functor Matrix22 where
+    fmap f (M22 x y z t) = M22 (f x) (f y) (f z) (f t)
+
+instance Num a => Num (Matrix22 a) where
+    (+) (M22 x y z t) (M22 u v w s) = M22 (x + u) (y + v) (z + w) (t + s)
+    fromInteger x = M22 (fromInteger x) (fromInteger 0) (fromInteger 0) (fromInteger x)
 
 newtype instance MVector s (Matrix22 a) = MV_Matrix22 (MVector s (a, a, a, a))
 newtype instance Vector    (Matrix22 a) = V_Matrix22  (Vector    (a, a, a, a))
