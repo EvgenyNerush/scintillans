@@ -1,6 +1,6 @@
 import qualified Data.Array.Repa         as R
 import qualified Scintillans.Solver      as S
-import qualified Scintillans.Synchrotron as Sy
+import Scintillans.Synchrotron
 import Scintillans.BlockMatrix
 
 -- Here we test the classical limit of QED synchrotron emission probability by comparison with the
@@ -35,11 +35,11 @@ x2  = 0.91 * x0 -- the same for the interaction time of 2 * t
 xl = 75 -- we solve BE on the interval [xl, x0]
 n  = 100
 dx = (x0 - xl) / fromIntegral (n - 1)
-dt = 0.2 / Sy.alpha
+dt = 0.2 / alpha
 nt = round $ t / dt
 
 hatA :: R.Array R.U R.DIM2 (Matrix11 Double)
-hatA = R.computeS $ R.map (\x -> M11 x) $ Sy.hatA b xl x0 n
+hatA = R.computeS $ R.map (\x -> M11 x) $ hatA00 b xl x0 n
 
 sol = S.exp hatA dt nt
 

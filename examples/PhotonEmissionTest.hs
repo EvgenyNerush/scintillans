@@ -1,6 +1,6 @@
 import qualified Data.Array.Repa         as R
 import qualified Scintillans.Solver      as S
-import qualified Scintillans.Synchrotron as Sy
+import Scintillans.Synchrotron
 import Scintillans.BlockMatrix
 
 -- If the interaction time is small, every electron emits less than a single photon in the average,
@@ -12,7 +12,7 @@ import Scintillans.BlockMatrix
 -- chi = x0 * b = 1 / 3
 x0 = 1e3
 b = 1 / (3 * x0)
-t = 0.1 / Sy.alpha
+t = 0.1 / alpha
 
 nt = 10
 dt = t / fromIntegral nt
@@ -24,8 +24,8 @@ dx = (xb - xa) / (fromIntegral $ n - 1)
 
 hatA :: R.Array R.U R.DIM2 (Matrix22 Double)
 hatA = R.computeS $ R.traverse2
-  (Sy.hatA   b xa xb n)
-  (Sy.hatA10 b xa xb n)
+  (hatA00   b xa xb n)
+  (hatA10 b xa xb n)
   (\_ _ -> (R.Z R.:. n R.:. n))
   (\lf lf' (R.Z R.:. i R.:. j) -> M22 (lf  (R.Z R.:. i R.:. j))
                                       0
@@ -57,15 +57,15 @@ emittedEnergy  = (*) dx $ sum $ zipWith (*) fPh xsPh
 
 power = emittedEnergy / t
 
-powerCl = 2 / 3 * Sy.alpha * x0**2 * b
+powerCl = 2 / 3 * alpha * x0**2 * b
 
 v = (abs $ power / powerCl - 0.375) / 0.375
-w = (abs $ x0 - electronEnergy - emittedEnergy) / emittedEnergy
+v' = (abs $ x0 - electronEnergy - emittedEnergy) / emittedEnergy
 
 main = 
-  if v < 0.05 && w < 1e-13 then
+  if v < 0.05 && v' < 1e-13 then
     putStrLn "PhotonEmissionTest: \x1b[32mpassed\x1b[0m"
   else do
     putStrLn "PhotonEmissionTest: \x1b[1;31mfailed\x1b[0m"
     print v
-    print w
+    print v'

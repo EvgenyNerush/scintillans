@@ -97,8 +97,9 @@ hatU b xa xb n = R.fromFunction (R.Z R.:. n R.:. n)
   $ \(R.Z R.:. i R.:. j) -> if i /= j then 0 else
     R.sumAllS $ R.slice (hatW b xa xb n) (R.Any R.:. j)
 
-hatA :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
-hatA b xa xb n = hatW b xa xb n R.-^ hatU b xa xb n
+-- hatA for BE with electrons only
+hatA00 :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
+hatA00 b xa xb n = hatW b xa xb n R.-^ hatU b xa xb n
 
 -- RHS for two-component BE, \partial_t f = \hat A f, where
 --
@@ -118,7 +119,7 @@ hatA b xa xb n = hatW b xa xb n R.-^ hatU b xa xb n
 --          | A_{10} | A_{11} |
 --          |        |        |
 --
--- where A_{00} can be computed with hatA function above.
+-- where A_{00} can be computed with hatA00 function above.
 -- Note that in the matrix representation A_{00}, A{01} and f_e concern the electrons with energy from
 -- x_a to x_b, and A_{10}, A_{11} and f_{ph} concern the photons with energy from 0 to x_b - x_a
 -- (inclusive). The number of nodes in f_e and f_{ph} is the same. It is natural to take into
