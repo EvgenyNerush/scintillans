@@ -50,6 +50,19 @@ instance Num a => Multable (Matrix22 a) (Matrix22 a) (Matrix22 a) where
   mult (M22 x y z t) (M22 u v w s) =
     M22 (x * u + y * w) (x * v + y * s) (z * u + t * w) (z * v + t * s)
 
+instance Num a => Multable (Matrix33 a) (Matrix31 a) (Matrix31 a) where
+  mult (M33 a00 a01 a02 a10 a11 a12 a20 a21 a22) (M31 b00 b10 b20) =
+    M31 (a00 * b00 + a01 * b10 + a02 * b20)
+        (a10 * b00 + a11 * b10 + a12 * b20)
+        (a20 * b00 + a21 * b10 + a22 * b20) 
+
+instance Num a => Multable (Matrix33 a) (Matrix33 a) (Matrix33 a) where
+  mult (M33 a00 a01 a02 a10 a11 a12 a20 a21 a22)
+       (M33 b00 b01 b02 b10 b11 b12 b20 b21 b22) =
+    M33 (a00*b00 + a01*b10 + a02*b20) (a00*b01 + a01*b11 + a02*b21) (a00*b02 + a01*b12 + a02*b22) 
+        (a10*b00 + a11*b10 + a12*b20) (a10*b01 + a11*b11 + a12*b21) (a10*b02 + a11*b12 + a12*b22) 
+        (a20*b00 + a21*b10 + a22*b20) (a20*b01 + a21*b11 + a22*b21) (a20*b02 + a21*b12 + a22*b22) 
+
 -- identity matrix, smth should be added to its type because fromInteger should be called for
 -- square matrices only
 idMatrix :: (Num a, Unbox a) => Int -> R.Array R.U R.DIM2 a
@@ -57,7 +70,7 @@ idMatrix n = R.computeS $ R.fromFunction (R.Z R.:. n R.:. n) $ \(R.Z R.:. i R.:.
   if i == j then fromInteger 1 else fromInteger 0
 
 -- Multiplication of Repa matrices, as in linear algebra. The type contained in the resulting
--- matrix should be an instance of Num and provide (+).
+-- matrix should be an instance of Num.
 mmultS :: (Unbox a, Unbox b, Unbox c, Num c, Multable a b c) => R.Array R.U R.DIM2 a -> R.Array R.U R.DIM2 b -> R.Array R.U R.DIM2 c
 mmultS arr brr
   | wa /= hb  = error "Scintillans.BlockMatrix mmultS: width of the first matrix != height of the second one."
@@ -401,3 +414,96 @@ instance (Unbox a) => G.Vector Vector (Matrix22 a) where
   basicUnsafeCopy (MV_Matrix22 mv) (V_Matrix22 v)
                 = G.basicUnsafeCopy mv v
   elemseq _ (M22 x y z t) u = x `seq` y `seq` z `seq` t `seq` u
+
+-----------
+-- Matrix33
+-----------
+
+instance Functor Matrix33 where
+    fmap f (M33 a00 a01 a02 a10 a11 a12 a20 a21 a22) =
+      M33 (f a00) (f a01) (f a02)
+          (f a10) (f a11) (f a12)
+          (f a20) (f a21) (f a22)
+
+newtype instance MVector s (Matrix33 a) = MV_Matrix33 (MVector s ( (a, a, a)
+                                                                 , (a, a, a)
+                                                                 , (a, a, a) ))
+newtype instance Vector    (Matrix33 a) = V_Matrix33  (Vector    ( (a, a, a)
+                                                                 , (a, a, a)
+                                                                 , (a, a, a) ))
+
+instance (Unbox a) => Unbox (Matrix33 a)
+
+instance (Unbox a) => M.MVector MVector (Matrix33 a) where
+  {-# INLINE basicLength #-}
+  {-# INLINE basicUnsafeSlice #-}
+  {-# INLINE basicOverlaps #-}
+  {-# INLINE basicUnsafeNew #-}
+  {-# INLINE basicInitialize #-}
+  {-# INLINE basicUnsafeReplicate #-}
+  {-# INLINE basicUnsafeRead #-}
+  {-# INLINE basicUnsafeWrite #-}
+  {-# INLINE basicClear #-}
+  {-# INLINE basicSet #-}
+  {-# INLINE basicUnsafeCopy #-}
+  {-# INLINE basicUnsafeGrow #-}
+  basicLength (MV_Matrix33 v) = M.basicLength v
+  basicUnsafeSlice i n (MV_Matrix33 v) = MV_Matrix33 $ M.basicUnsafeSlice i n v
+  basicOverlaps (MV_Matrix33 v1) (MV_Matrix33 v2) = M.basicOverlaps v1 v2
+  basicUnsafeNew n = MV_Matrix33 `liftM` M.basicUnsafeNew n
+  basicInitialize (MV_Matrix33 v) = M.basicInitialize v
+  basicUnsafeReplicate n (M33 a00 a01 a02
+                              a10 a11 a12
+                              a20 a21 a22)
+    = MV_Matrix33 `liftM` M.basicUnsafeReplicate n ( (a00, a01, a02)
+                                                   , (a10, a11, a12)
+                                                   , (a20, a21, a22) )
+  basicUnsafeRead (MV_Matrix33 v) i
+    = (\( (a00, a01, a02)
+        , (a10, a11, a12)
+        , (a20, a21, a22) ) -> (M33 a00 a01 a02
+                                    a10 a11 a12
+                                    a20 a21 a22)) `liftM` M.basicUnsafeRead v i
+  basicUnsafeWrite (MV_Matrix33 v) i (M33 a00 a01 a02
+                                          a10 a11 a12
+                                          a20 a21 a22)
+    = M.basicUnsafeWrite v i ( (a00, a01, a02)
+                             , (a10, a11, a12)
+                             , (a20, a21, a22) )
+  basicClear (MV_Matrix33 v) = M.basicClear v
+  basicSet (MV_Matrix33 v) (M33 a00 a01 a02
+                                a10 a11 a12
+                                a20 a21 a22)
+    = M.basicSet v ( (a00, a01, a02)
+                   , (a10, a11, a12)
+                   , (a20, a21, a22) )
+
+  basicUnsafeCopy (MV_Matrix33 v1) (MV_Matrix33 v2) = M.basicUnsafeCopy v1 v2
+  basicUnsafeMove (MV_Matrix33 v1) (MV_Matrix33 v2) = M.basicUnsafeMove v1 v2
+  basicUnsafeGrow (MV_Matrix33 v) n = MV_Matrix33 `liftM` M.basicUnsafeGrow v n
+
+instance (Unbox a) => G.Vector Vector (Matrix33 a) where
+  {-# INLINE basicUnsafeFreeze #-}
+  {-# INLINE basicUnsafeThaw #-}
+  {-# INLINE basicLength #-}
+  {-# INLINE basicUnsafeSlice #-}
+  {-# INLINE basicUnsafeIndexM #-}
+  {-# INLINE elemseq #-}
+  basicUnsafeFreeze (MV_Matrix33 v) = V_Matrix33 `liftM` G.basicUnsafeFreeze v
+  basicUnsafeThaw (V_Matrix33 v) = MV_Matrix33 `liftM` G.basicUnsafeThaw v
+  basicLength (V_Matrix33 v) = G.basicLength v
+  basicUnsafeSlice i n (V_Matrix33 v) = V_Matrix33 $ G.basicUnsafeSlice i n v
+  basicUnsafeIndexM (V_Matrix33 v) i
+    = (\( (a00, a01, a02)
+        , (a10, a11, a12)
+        , (a20, a21, a22) ) -> M33 a00 a01 a02
+                                   a10 a11 a12
+                                   a20 a21 a22) `liftM` G.basicUnsafeIndexM v i
+  basicUnsafeCopy (MV_Matrix33 mv) (V_Matrix33 v)
+                = G.basicUnsafeCopy mv v
+  elemseq _ (M33 a00 a01 a02
+                 a10 a11 a12
+                 a20 a21 a22) t = a00 `seq` a01 `seq` a02 `seq` 
+                                  a10 `seq` a11 `seq` a12 `seq` 
+                                  a20 `seq` a21 `seq` a22 `seq` t
+
