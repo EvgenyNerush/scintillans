@@ -1,10 +1,17 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, TypeFamilies, BangPatterns #-}
+{-# LANGUAGE MultiParamTypeClasses
+           , FunctionalDependencies
+           , TypeFamilies
+           , BangPatterns
+           , TemplateHaskell #-}
 
 module Scintillans.BlockMatrix where
 
 import qualified Data.Array.Repa             as R
 import qualified Data.Vector.Generic         as G
 import qualified Data.Vector.Generic.Mutable as M
+import qualified Hedgehog.Gen                as Gen
+import qualified Hedgehog.Range              as Range
+import Hedgehog
 import Data.Vector.Unboxed
 import Control.Monad ( liftM )
 
@@ -507,3 +514,31 @@ instance (Unbox a) => G.Vector Vector (Matrix33 a) where
                                   a10 `seq` a11 `seq` a12 `seq` 
                                   a20 `seq` a21 `seq` a22 `seq` t
 
+-----------------
+-- Hedgehog tests
+-----------------
+--
+-- To run them, one can use `stack ghci` then type `tests` in the GHCi session.
+
+-- trace (AB) = trace (BA)
+prop_M33_trace :: Property
+prop_M33_trace =
+  property $ do
+    as <- forAll nineRandomNumbers
+    bs <- forAll nineRandomNumbers
+    trace (mult' as bs) === trace (mult' bs as)
+      where nineRandomNumbers = Gen.list (Range.singleton 9)
+                              $ Gen.int (Range.constant (-100) (100))
+            mult' :: [Int] -> [Int] -> Matrix33 Int
+            mult' x y = mult (fromListM33 x) (fromListM33 y)
+            fromListM33 [ a00, a01, a02
+                        , a10, a11, a12
+                        , a20, a21, a22 ] = M33 a00 a01 a02
+                                                a10 a11 a12
+                                                a20 a21 a22
+            trace ( M33 a _ _
+                        _ b _
+                        _ _ c ) = a + b + c
+
+tests :: IO Bool
+tests = checkParallel $$(discover)
