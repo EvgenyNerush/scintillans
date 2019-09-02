@@ -1,7 +1,28 @@
+-- |This module provides numerical approximations for probabilityes of photon emission and pair
+-- photoproduction in a constant magnetic field \(B\) which is perpendicular to the electron
+-- velocity, in a synchrotron regime. See [Quantum Electrodynamics, V. B. Berestetskii, E. M.
+-- Lifshitz and L. P. Pitaevskii, Pergamon, 1982] for details.
+--
+-- Here time is normalized to the radiation formation time
+-- \[t_{rf} = m c / (e B),\]
+-- and energy is normalized to the rest-mass electron energy, \(mc^2\).  The first parameter of the
+-- probabilities, \(b\), is the magnetic field strength \(B\) normalized to the Sauter-Schwinger
+-- (critical) field \(B_S = m^2 c^3 / e \hbar\). For these units \(\chi = b x\), where \(x\) is the
+-- normalized electron energy.
+--
+-- Note that the radiation time, i.e. time on that one photon is emitted on average, is about
+-- \[t_{rad} \sim 1 / \alpha\]
+-- in the classical limit ( \(\chi \ll 1\) ) and is
+-- \[t_{rad} \sim \chi^{1/3} / \alpha\]
+-- in the quantum limit ( \(\chi \gg 1\) ). In the 'Scintillans.Solver' one should use the timestep
+-- \(\Delta t \ll t_{rad}\).
+
 module Scintillans.Synchrotron where
 
 import qualified Data.Array.Repa as R
 import Numeric.GSL.Special.Airy
+
+-- *Probabilities
 
 -- w x y means w(x -> y), where w(x -> y) dy is the probability per time unit from the particle
 -- with energy x to produce particle with energy in the interval [y, y + dy], where dy is
@@ -13,7 +34,7 @@ import Numeric.GSL.Special.Airy
 -- Electrodynamics, V. B. Berestetskii, E. M. Lifshitz and L. P. Pitaevskii, Pergamon, 1982].
 ---------------------------------------------------------------------------------------------------
 --
--- Here we supose that an external constant magnetic field B is perpendicular to the electron
+-- Here we suppose that an external constant magnetic field B is perpendicular to the electron
 -- velocity. Time is normalized to the radiation formation time
 -- t_{rf} = m c / (e B),
 -- and energy is normalized to the rest-mass electron energy, mc^2.
@@ -27,7 +48,7 @@ import Numeric.GSL.Special.Airy
 -- t_rad ~ chi^{1/3} / alpha
 -- in the quantum limit (chi >> 1). In the Solver one should use dt << t_rad.
 
--- e^2 / hbar c
+-- |\(e^2 / \hbar c \approx 1 / 137\)
 alpha = 1 / 137.04 :: Double
 
 -- Ai(x) decay sharply with x and is about 1e-3 at x = 4. Ai(x) is already out of Double precision
@@ -73,6 +94,8 @@ p n b x = trapRule dpdy x' x n
   where dpdy y = if y /= x then (x - y) * w b x y else 0
         x' = x / (1 + 8 * chi)
         chi = b * x
+
+-- *Matrices
 
 -----------------------------------------------------------------------
 -- Right-hand-side of the Boltzmann's equation for synchrotron emission

@@ -11,6 +11,7 @@ equations which take into account synchrotron emission and pair photoproduction 
 well-known QED formulas.  For details, see [I I Artemenko et al 2019 Plasma Phys. Control. Fusion
 61 074003](https://doi.org/10.1088/1361-6587/ab1712) (or see freely available
 [preprint](https://www.researchgate.net/publication/332283915_Global_constant_field_approximation_for_radiation_reaction_in_collision_of_high-intensity_laser_pulse_with_electron_beam)).
+Source-code documentation (see below) describes the code in details as well.
 
 ## How to use
 
@@ -31,6 +32,21 @@ tests in the `examples` directory) which can be built and run with
 
 Alternatively, one can include _Scintillans_ as a dependency in `*.cabal` and `stack.yaml` files of
 his/her own project.
+
+## Documentation
+
+Source-code documentation can be produced in HTML format with Haddock:
+
+    stack haddock
+
+which will take some time for the first run. This command also prints the path to the generated
+docs, e.g.
+
+    ...
+    Updating Haddock index for local packages in
+    .../scintillans/.stack-work/install/.../8.4.3/doc/index.html
+
+which can be then open with an internet browser.
 
 ## Acknowledgments
 
