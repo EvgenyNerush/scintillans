@@ -1,23 +1,36 @@
 -- |This module provides numerical approximations for probabilityes of photon emission and pair
--- photoproduction in a constant magnetic field \(B\) which is perpendicular to the electron
+-- photoproduction in a constant magnetic field \(B\) which is perpendicular to the particle
 -- velocity, in a synchrotron regime. See [Quantum Electrodynamics, V. B. Berestetskii, E. M.
 -- Lifshitz and L. P. Pitaevskii, Pergamon, 1982] for details.
 --
 -- Here time is normalized to the radiation formation time
 -- \[t_{rf} = m c / (e B),\]
--- and energy is normalized to the rest-mass electron energy, \(mc^2\).  The first parameter of the
--- probabilities, \(b\), is the magnetic field strength \(B\) normalized to the Sauter-Schwinger
--- (critical) field \(B_S = m^2 c^3 / e \hbar\). For these units \(\chi = b x\), where \(x\) is the
--- normalized electron energy.
+-- and energy \(x\) is normalized to the rest-mass electron energy, \(mc^2\).  The first parameter
+-- of the probabilities, \(b\), is the magnetic field strength \(B\) normalized to the
+-- Sauter-Schwinger (critical) field \(B_S = m^2 c^3 / e \hbar\). For these units \(\chi = b x\),
+-- where, again, \(x\) is the normalized electron energy.
 --
 -- Note that the radiation time, i.e. time on that one photon is emitted on average, is about
 -- \[t_{rad} \sim 1 / \alpha\]
 -- in the classical limit ( \(\chi \ll 1\) ) and is
 -- \[t_{rad} \sim \chi^{1/3} / \alpha\]
--- in the quantum limit ( \(\chi \gg 1\) ). In the 'Scintillans.Solver' one should use the timestep
--- \(\Delta t \ll t_{rad}\).
+-- in the quantum limit ( \(\chi \gg 1\) ). In the "Scintillans.Solver" one should use the
+-- timestep \(\Delta t \ll t_{rad}\).
 
-module Scintillans.Synchrotron where
+module Scintillans.Synchrotron
+  ( alpha
+  , trapRule
+  , aiMaxArg
+  , intAi
+  , w
+  , s
+  , u
+  , p
+  , hatW
+  , hatU
+  , hatA00
+  , hatA10
+  ) where
 
 import qualified Data.Array.Repa as R
 import Numeric.GSL.Special.Airy
@@ -48,28 +61,32 @@ import Numeric.GSL.Special.Airy
 -- t_rad ~ chi^{1/3} / alpha
 -- in the quantum limit (chi >> 1). In the Solver one should use dt << t_rad.
 
--- |\(e^2 / \hbar c \approx 1 / 137\)
+-- |\(\alpha \equiv e^2 / \hbar c \approx 1 / 137\)
 alpha = 1 / 137.04 :: Double
 
--- Ai(x) decay sharply with x and is about 1e-3 at x = 4. Ai(x) is already out of Double precision
--- approximately at x > 100.
-aiMaxArg = 30 :: Double
-
--- Trapezoidal rule of numerical integration
+-- |Trapezoidal rule of numerical integration, \(\int_a^b f(x) \, dx \approx\) @trapRule f a b n@,
+-- with @n@ the number of /intervals/ used for the integration.
 trapRule :: (Double -> Double) -> Double -> Double -> Int -> Double
 trapRule f a b n = 0.5 * dx * (f a + f b + 2 * (sum $ map f $ mid))
   where dx = (b - a) / fromIntegral n
         mid = [a + dx * (fromIntegral i) | i <- [1..(n - 1)]]
 
--- int_x^\infty Ai(y) dy, computed numerically with accuracy of about one percent.
+-- |We suppose \(\operatorname{Ai}(x) = 0\) and \(\operatorname{Ai}'(x) = 0\) for \(x >\)
+-- @aiMaxArg@. Function \( \operatorname{Ai}(x) \) decays sharply with \(x\): it is is about 1e-3
+-- at \(x = 4\) and is already out of Double precision approximately at \(x > 100\).
+aiMaxArg = 30 :: Double
+
+-- |@intAi x@ is the integral \(\int_x^\infty \operatorname{Ai}(y) \, dy \) computed numerically by
+-- 'trapRule' with accuracy of about one percent.
 intAi :: Double -> Double
 intAi x = if x > aiMaxArg then 0 else trapRule (\y -> airy_Ai y PrecSingle) x x' 17
   where x' = if x < 25 / 16 then x + 4 else x + 5 / sqrt x
 
--- Probability rate for the photon emission... y>= x...
---w b x y = if y >= x || y <= 0 || z > aiMaxArg then 0 else w
+-- |Probability rate for the photon emission in the magnetic field \(b\): @w b x y =@
+-- \( w(x \to y) \), where \( w(x \to y) \Delta y \) is the probability per time unit for
+-- an electron (or positron) with energy \(x\) to produce a photon with energy in the interval \( [x - y,??? y + \Delta
+-- y] \), where \(\Delta y\) is infinitesimal. Unsafe, use  \(x > y\),
 w :: Double -> Double -> Double -> Double
---w b x y = if y >= x || y <= 0 || z > aiMaxArg then 0 else w
 w b x y = if z > aiMaxArg then 0
           else -alpha / (b * x * x) * (intAi z + v * airy_Ai_deriv z PrecSingle)
   where chi = b * x
@@ -82,13 +99,14 @@ s :: Double -> Double -> Double -> Double
 s b x dx = -alpha / (b * x * x) * (dx * intAi 0
   + 6 * airy_Ai_deriv 0 PrecSingle * ((b * x * x)**2 * dx)**(1 / 3))
 
--- Full probability of the photon emission... Computed numerically...
+-- |Full probability of the photon emission... Computed numerically...
+-- u x means the full probability rate, i.e. u x = \int_0^x w(x -> y) dy.
 u :: Int -> Double -> Double -> Double
 u n b x = s b x dx + trapRule (w b x) x' (x - dx) (n - 1)
   where x' = x / (1 + 8 * b * x) -- y < x' => arg of Ai >= 4
         dx = (x - x') / fromIntegral n
 
--- The emission power. There is no singularity in the power distribution, moreover,
+-- |The emission power. There is no singularity in the power distribution, moreover,
 -- w(x -> y) * (x - y) = 0 at y = x.
 p n b x = trapRule dpdy x' x n
   where dpdy y = if y /= x then (x - y) * w b x y else 0

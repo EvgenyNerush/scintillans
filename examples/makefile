@@ -1,4 +1,4 @@
-OBJS = ../src/Scintillans/BlockMatrix.hs ../src/Scintillans/Solver.hs makefile
+OBJS =  makefile ../src/Scintillans/BlockMatrix.hs ../src/Scintillans/Solver.hs ../src/Scintillans/Synchrotron.hs
 
 all: BlockMatrixTest SolverTest IntAiTest WTest SynchrotronTestClassical PhotonEmissionTest
 
@@ -19,3 +19,6 @@ SynchrotronTestClassical: $(OBJ) SynchrotronTestClassical.hs
 
 PhotonEmissionTest: $(OBJ) PhotonEmissionTest.hs
 	stack build && stack ghc -- -O2 --make PhotonEmissionTest.hs && ./PhotonEmissionTest
+
+clean:
+	rm -I BlockMatrixTest SolverTest IntAiTest WTest SynchrotronTestClassical PhotonEmissionTest
