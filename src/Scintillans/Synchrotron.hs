@@ -18,7 +18,8 @@
 -- timestep \(\Delta t \ll t_{rad}\).
 
 module Scintillans.Synchrotron
-  ( alpha
+  ( -- *Probabilities
+    alpha
   , trapRule
   , aiMaxArg
   , intAi
@@ -26,40 +27,18 @@ module Scintillans.Synchrotron
   , s
   , u
   , p
+    -- *Matrices
+    -- $Matrices
   , hatW
   , hatU
+    -- **Matrices for two-component distribution function
+    -- $Matrices-2c
   , hatA00
   , hatA10
   ) where
 
 import qualified Data.Array.Repa as R
 import Numeric.GSL.Special.Airy
-
--- *Probabilities
-
--- w x y means w(x -> y), where w(x -> y) dy is the probability per time unit from the particle
--- with energy x to produce particle with energy in the interval [y, y + dy], where dy is
--- infinitesimal.
--- u x means the full probability rate, i.e. u x = \int_0^x w(x -> y) dy.
-
----------------------------------------------------------------------------------------------------
--- Quantum synchrotron probabilities (Nikishov--Ritus or Baier--Katkov), see [Quantum
--- Electrodynamics, V. B. Berestetskii, E. M. Lifshitz and L. P. Pitaevskii, Pergamon, 1982].
----------------------------------------------------------------------------------------------------
---
--- Here we suppose that an external constant magnetic field B is perpendicular to the electron
--- velocity. Time is normalized to the radiation formation time
--- t_{rf} = m c / (e B),
--- and energy is normalized to the rest-mass electron energy, mc^2.
--- The first parameter of the probabilities is the magnetic field strength normalized to
--- Sauter-Schwinger (critical) field B_S = m^2 c^3 / e hbar, where hbar = h / 2 pi, and h is the
--- Planck's constant. For these units chi = b x, where x is the normalized electron energy.
---
--- Note that the radiation time, i.e. time on that one photon is emitted in average, is about
--- t_rad ~ 1 / alpha
--- in the classical limit (chi << 1) and is
--- t_rad ~ chi^{1/3} / alpha
--- in the quantum limit (chi >> 1). In the Solver one should use dt << t_rad.
 
 -- |\(\alpha \equiv e^2 / \hbar c \approx 1 / 137\)
 alpha = 1 / 137.04 :: Double
@@ -82,50 +61,59 @@ intAi :: Double -> Double
 intAi x = if x > aiMaxArg then 0 else trapRule (\y -> airy_Ai y PrecSingle) x x' 17
   where x' = if x < 25 / 16 then x + 4 else x + 5 / sqrt x
 
--- |Probability rate for the photon emission in the magnetic field \(b\): @w b x y =@
--- \( w(x \to y) \), where \( w(x \to y) \Delta y \) is the probability per time unit for
--- an electron (or positron) with energy \(x\) to produce a photon with energy in the interval \( [x - y,??? y + \Delta
--- y] \), where \(\Delta y\) is infinitesimal. Unsafe, use  \(x > y\),
-w :: Double -> Double -> Double -> Double
+-- |@w b@ is the probability rate of the photon emission in the magnetic field @b@. Namely,
+-- @w b x y =@ \( w(x \to y) \), where \( w(x \to y) \Delta y \) is the probability per time unit
+-- for an electron (or positron) with energy \(x\) to emit a photon such that the resulting
+-- electron energy is in the interval \( [y, y + \Delta y] \), where \(\Delta y\) is infinitesimal.
+-- Thus, the photon energy is approximately \(x - y\). Note that this function is /unsafe/ and
+-- should be used only for \(x > y \geqslant 0\).
+w :: Double -- ^the magnetic field strength
+  -> Double -- ^the initial electron energy
+  -> Double -- ^the final electron energy
+  -> Double -- ^the result
 w b x y = if z > aiMaxArg then 0
           else -alpha / (b * x * x) * (intAi z + v * airy_Ai_deriv z PrecSingle)
   where chi = b * x
         z = ((x - y) / (y * chi)) ** (2 / 3)
         v = 2 / z + (x - y) / x * chi * sqrt z
 
--- Part of the full probability rate near the singularity..., int_(x-dx)^x...
--- here we assume dx << x
+-- |For magnetic field @b@ and small energy interval @dx@ \(\equiv \Delta x \ll x\), the integral
+-- \(\int_{x - \Delta x}^x w(x \to y) \, dy \approx\) @s b x dx@. Therefore, @s b x dx@ is a
+-- contribution of the vicinity of @x@ to the full probability rate.
 s :: Double -> Double -> Double -> Double
 s b x dx = -alpha / (b * x * x) * (dx * intAi 0
   + 6 * airy_Ai_deriv 0 PrecSingle * ((b * x * x)**2 * dx)**(1 / 3))
 
--- |Full probability of the photon emission... Computed numerically...
--- u x means the full probability rate, i.e. u x = \int_0^x w(x -> y) dy.
+-- |@u n b x@ is the full probability rate of the photon emission \(\int_0^x w(x \to y) \, dy\) in
+-- the field @b@ computed with trapezoidal rule on @n@ intervals, with @x@ the energy of the
+-- electron emitting the photon.
 u :: Int -> Double -> Double -> Double
 u n b x = s b x dx + trapRule (w b x) x' (x - dx) (n - 1)
   where x' = x / (1 + 8 * b * x) -- y < x' => arg of Ai >= 4
         dx = (x - x') / fromIntegral n
 
--- |The emission power. There is no singularity in the power distribution, moreover,
--- w(x -> y) * (x - y) = 0 at y = x.
+-- |@p n b x@ is the power of the photon emission \(\int_0^x (x - y) w(x \to y) \, dy\)  in the
+-- field @b@ computed with trapezoidal rule on @n@ intervals, with @x@ the initial energy of the
+-- electron.  Note that opposite to \( w(x \to y) \), there is no singularity in the power
+-- distribution, moreover, \( (x - y) w(x \to y) = 0 \) at \(y = x\).
 p n b x = trapRule dpdy x' x n
   where dpdy y = if y /= x then (x - y) * w b x y else 0
         x' = x / (1 + 8 * chi)
         chi = b * x
 
--- *Matrices
 
------------------------------------------------------------------------
--- Right-hand-side of the Boltzmann's equation for synchrotron emission
------------------------------------------------------------------------
+-- $Matrices
+-- /Scintillans/ uses matrix representation of the equations which describe electron, photon and
+-- positron distribution functions \(f \equiv dN / d\epsilon\ \equiv dN / dx\) in a constant
+-- magnetic field. Matrices 'hatW', 'hatU' 'hatA00' and 'hatA10' can be used to build the equation
+-- for the two-component distribution function (distribution function of electrons and photons),
+-- which is described in detail in [I I Artemenko et al 2019 Plasma Phys. Control. Fusion 61
+-- 074003](https://doi.org/10.1088/1361-6587/ab1712) (or see freely available
+-- [preprint](https://www.researchgate.net/publication/332283915_Global_constant_field_approximation_for_radiation_reaction_in_collision_of_high-intensity_laser_pulse_with_electron_beam)).
+-- Note that the matrices below are /delayed/ (of Repa.D type) and should be computed before use in
+-- the "Scintillans.Solver".
 
--- E.g., Boltzmann's equation for electrons
--- \partial_t f_e(x) = - u(x) f_e(x) + \int_x^\infty f_e(y) w(y -> x) dy
--- in the matrix form can be written as
--- \partial_t f_e = -\hat U f_e + \hat W f_e
-
--- Note that the matrices here are of the R.D type and should be computed before use in the Solver
-
+-- |\(\hat W\)
 hatW :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
 hatW b xa xb n = R.fromFunction (R.Z R.:. n R.:. n)
   $ \(R.Z R.:. i R.:. j) ->
@@ -133,10 +121,14 @@ hatW b xa xb n = R.fromFunction (R.Z R.:. n R.:. n)
   where x k = xa + dx * fromIntegral k
         dx = (xb - xa) / fromIntegral (n - 1)
 
+-- |\(\hat U\)
 hatU :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
 hatU b xa xb n = R.fromFunction (R.Z R.:. n R.:. n)
   $ \(R.Z R.:. i R.:. j) -> if i /= j then 0 else
     R.sumAllS $ R.slice (hatW b xa xb n) (R.Any R.:. j)
+
+-- $Matrices-2c
+-- In two-component representation...
 
 -- hatA for BE with electrons only
 hatA00 :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
