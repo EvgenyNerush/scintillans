@@ -1,5 +1,4 @@
 {-# LANGUAGE MultiParamTypeClasses
-           , FunctionalDependencies
            , TypeFamilies
            , BangPatterns #-}
 
@@ -10,6 +9,7 @@ import qualified Data.Vector.Generic         as G
 import qualified Data.Vector.Generic.Mutable as M
 import Data.Vector.Unboxed
 import Control.Monad ( liftM )
+import Scintillans.Solver
 
 -- 1x1 matrix
 data Matrix11 a = M11 !a
@@ -34,10 +34,6 @@ data Matrix33 a = M33 !a !a !a !a !a !a !a !a !a
 ------------
 -- Multables
 ------------
-
--- class to express block matrices which can be multiplied
-class Multable a b c | a b -> c where
-  mult :: a -> b -> c
 
 -- E.g., multiplication of 1x3 matrix to 3x1 matrix results 1x1 matrix
 instance Num a => Multable (Matrix13 a) (Matrix31 a) (Matrix11 a) where
@@ -65,22 +61,6 @@ instance Num a => Multable (Matrix33 a) (Matrix33 a) (Matrix33 a) where
     M33 (a00*b00 + a01*b10 + a02*b20) (a00*b01 + a01*b11 + a02*b21) (a00*b02 + a01*b12 + a02*b22) 
         (a10*b00 + a11*b10 + a12*b20) (a10*b01 + a11*b11 + a12*b21) (a10*b02 + a11*b12 + a12*b22) 
         (a20*b00 + a21*b10 + a22*b20) (a20*b01 + a21*b11 + a22*b21) (a20*b02 + a21*b12 + a22*b22) 
-
--- identity matrix, smth should be added to its type because fromInteger should be called for
--- square matrices only
-idMatrix :: (Num a, Unbox a) => Int -> R.Array R.U R.DIM2 a
-idMatrix n = R.computeS $ R.fromFunction (R.Z R.:. n R.:. n) $ \(R.Z R.:. i R.:. j) ->
-  if i == j then fromInteger 1 else fromInteger 0
-
--- Multiplication of Repa matrices, as in linear algebra. The type contained in the resulting
--- matrix should be an instance of Num.
-mmultS :: (Unbox a, Unbox b, Unbox c, Num c, Multable a b c) => R.Array R.U R.DIM2 a -> R.Array R.U R.DIM2 b -> R.Array R.U R.DIM2 c
-mmultS arr brr
-  | wa /= hb  = error "Scintillans.BlockMatrix mmultS: width of the first matrix != height of the second one."
-  | otherwise = arr `R.deepSeqArray` brr `R.deepSeqArray` (R.computeS $ R.fromFunction (R.Z R.:. ha R.:. wb) $ \(R.Z R.:. i R.:. j) -> R.sumAllS $ R.zipWith mult
-    (R.slice arr (R.Any R.:. i R.:. R.All)) (R.slice brr (R.Any R.:. j)))
-    where (R.Z R.:. ha R.:. wa) = R.extent arr
-          (R.Z R.:. hb R.:. wb) = R.extent brr
 
 -----------
 -- Matrix11

@@ -1,3 +1,5 @@
+{-# LANGUAGE FunctionalDependencies #-}
+
 -- |This module provides helper functions to solve the following differential equation:
 -- \[
 -- \partial_t f = \hat A f,
@@ -5,12 +7,52 @@
 -- where \(\hat A\) is a constant matrix and \(f\) is a vector. The general
 -- solution is \(f = \exp( \hat A t ) f_0\), with \(f_0\) the initial condition.
 
-module Scintillans.Solver ( pow , exp) where
+module Scintillans.Solver (
+    Multable (mult)
+  , mmultS
+  , idMatrix
+  , pow
+  , exp) where
 
 import Prelude hiding (exp)
 import qualified Data.Array.Repa as R
 import Data.Vector.Unboxed
-import Scintillans.BlockMatrix
+
+-- |Class to express block matrices which can be multiplied. In general, \(\hat A\) and \(f\) above
+-- are block matrices (a matrices of (sub-)matrices, see "Scintillans.BlockMatrix") and here we
+-- prevent multiplication of matrices with inappropriate number of blocks. For instance,
+-- multiplication of a matrix of 2x3 blocks with a matrix of 1x1 block wouldn't compile because
+-- there is no instance of @Multable@ for them.
+class Multable a b c | a b -> c where
+  mult :: a -> b -> c
+
+-- |Multiplication of Repa matrices (or block matrices represented as Repa matrices), as in linear
+-- algebra.
+mmultS :: (Unbox a, Unbox b, Unbox c, Num c, Multable a b c)
+       => R.Array R.U R.DIM2 a -- ^\(\hat A\)
+       -> R.Array R.U R.DIM2 b -- ^\(\hat B\)
+       -> R.Array R.U R.DIM2 c -- ^\(\hat A \hat B\)
+mmultS arr brr
+  | wa /= hb  =
+      error "Scintillans.Solver mmultS: width of the first matrix != height of the second one."
+  | otherwise =
+      arr `R.deepSeqArray`
+      brr `R.deepSeqArray`
+      ( R.computeS
+      $ R.fromFunction (R.Z R.:. ha R.:. wb)
+      $ \(R.Z R.:. i R.:. j) -> R.sumAllS
+            ( R.zipWith mult
+                        (R.slice arr (R.Any R.:. i R.:. R.All))
+                        (R.slice brr (R.Any R.:. j))
+            )
+      )
+    where (R.Z R.:. ha R.:. wa) = R.extent arr
+          (R.Z R.:. hb R.:. wb) = R.extent brr
+
+-- |@idMatrix n@ is the identity @nxn@ matrix.
+idMatrix :: (Num a, Unbox a) => Int -> R.Array R.U R.DIM2 a
+idMatrix n = R.computeS $ R.fromFunction (R.Z R.:. n R.:. n) $ \(R.Z R.:. i R.:. j) ->
+  if i == j then fromInteger 1 else fromInteger 0
 
 -- |\(m^n\), computed with exponentiation by squaring.
 pow :: (Num a, Unbox a, Multable a a a) =>

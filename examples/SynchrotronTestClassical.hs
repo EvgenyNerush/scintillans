@@ -2,6 +2,7 @@ import qualified Data.Array.Repa         as R
 import qualified Scintillans.Solver      as S
 import Scintillans.Synchrotron
 import Scintillans.BlockMatrix
+import Scintillans.Solver
 
 -- Here we test the classical limit of QED synchrotron emission probability by comparison with the
 -- results of the approach using the Landau--Lifshitz radiation reaction force. Namely, we compare

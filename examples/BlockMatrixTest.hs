@@ -1,5 +1,6 @@
 import qualified Data.Array.Repa as R
 import Scintillans.BlockMatrix
+import Scintillans.Solver
 
 -- This test program multiplies two long 1D vectors (1, 0, 1, 0, ...) implemented as block
 -- matrices, and also can multiply the same vectors implemented as Repa arrays. Use *threadscope*

@@ -2,6 +2,7 @@ import qualified Data.Array.Repa         as R
 import qualified Scintillans.Solver      as S
 import Scintillans.Synchrotron
 import Scintillans.BlockMatrix
+import Scintillans.Solver
 
 -- If the interaction time is small, every electron emits less than a single photon in the average,
 -- and in the case of monoenergetic electron beam the emission spectrum f_{ph}(x) coincides with

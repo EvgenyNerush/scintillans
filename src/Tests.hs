@@ -6,6 +6,7 @@ import qualified Hedgehog.Gen   as Gen
 import qualified Hedgehog.Range as Range
 import Hedgehog
 import Scintillans.BlockMatrix
+import Scintillans.Solver
 
 -----------------
 -- Hedgehog tests
