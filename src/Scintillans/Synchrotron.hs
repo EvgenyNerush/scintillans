@@ -31,9 +31,11 @@ module Scintillans.Synchrotron
     -- $Matrices
   , hatW
   , hatU
+    -- **Matrices for electron distribution function
+    -- $Matrices-1c
+  , hatA00
     -- **Matrices for two-component distribution function
     -- $Matrices-2c
-  , hatA00
   , hatA10
   ) where
 
@@ -67,10 +69,10 @@ intAi x = if x > aiMaxArg then 0 else trapRule (\y -> airy_Ai y PrecSingle) x x'
 -- electron energy is in the interval \( [y, y + \Delta y] \), where \(\Delta y\) is infinitesimal.
 -- Thus, the photon energy is approximately \(x - y\). Note that this function is /unsafe/ and
 -- should be used only for \(x > y \geqslant 0\).
-w :: Double -- ^the magnetic field strength
-  -> Double -- ^the initial electron energy
-  -> Double -- ^the final electron energy
-  -> Double -- ^the result
+w :: Double -- ^magnetic field strength
+  -> Double -- ^initial electron energy
+  -> Double -- ^final electron energy
+  -> Double -- ^result
 w b x y = if z > aiMaxArg then 0
           else -alpha / (b * x * x) * (intAi z + v * airy_Ai_deriv z PrecSingle)
   where chi = b * x
@@ -105,69 +107,66 @@ p n b x = trapRule dpdy x' x n
 -- $Matrices
 -- /Scintillans/ uses matrix representation of the equations which describe electron, photon and
 -- positron distribution functions \(f \equiv dN / d\epsilon\ \equiv dN / dx\) in a constant
--- magnetic field. Matrices 'hatW', 'hatU' 'hatA00' and 'hatA10' can be used to build the equation
+-- magnetic field. Matrices 'hatW', 'hatU', 'hatA00' and 'hatA10' can be used to build the equation
 -- for the two-component distribution function (distribution function of electrons and photons),
 -- which is described in detail in [I I Artemenko et al 2019 Plasma Phys. Control. Fusion 61
 -- 074003](https://doi.org/10.1088/1361-6587/ab1712) (or see freely available
 -- [preprint](https://www.researchgate.net/publication/332283915_Global_constant_field_approximation_for_radiation_reaction_in_collision_of_high-intensity_laser_pulse_with_electron_beam)).
--- Note that the matrices below are /delayed/ (of Repa.D type) and should be computed before use in
--- the "Scintillans.Solver".
+-- Note that the matrices below are /delayed/ (of
+-- [Repa.D](http://hackage.haskell.org/package/repa-3.4.1.4/docs/Data-Array-Repa.html) type) and
+-- should be computed before use with "Scintillans.Solver".  Also note that it is assumed that the
+-- lower boundary of the considered energy interval \(x_a\) is such small that the photon emission
+-- is negligible for electrons with \(x_a\), or there is almost no electrons with energy about
+-- \(x_a\). Otherwise /Scintillans/ does not treat \(f_e\) correctly near \(x_a\).
 
--- |\(\hat W\)
-hatW :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
+
+-- |\(\hat W\), as described in /Artemenko 2019/, see links above for details.
+hatW :: Double                    -- ^magnetic field strength
+     -> Double                    -- ^lower bound of the considered energy interval
+     -> Double                    -- ^upper bound of the considered energy interval
+     -> Int                       -- ^dimension of the vector space which represents \(f_e\)
+     -> R.Array R.D R.DIM2 Double -- ^result
 hatW b xa xb n = R.fromFunction (R.Z R.:. n R.:. n)
   $ \(R.Z R.:. i R.:. j) ->
     if j > i then dx * w b (x j) (x i) else 0
   where x k = xa + dx * fromIntegral k
         dx = (xb - xa) / fromIntegral (n - 1)
 
--- |\(\hat U\)
+-- |\(\hat U\), as described in /Artemenko 2019/. The arguments are the same as in 'hatW'.
 hatU :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
 hatU b xa xb n = R.fromFunction (R.Z R.:. n R.:. n)
   $ \(R.Z R.:. i R.:. j) -> if i /= j then 0 else
     R.sumAllS $ R.slice (hatW b xa xb n) (R.Any R.:. j)
 
--- $Matrices-2c
--- In two-component representation...
+-- $Matrices-1c
+-- If one is interested only in the electron spectrum and pair photoproduction is not taken into
+-- account, then Boltzmann\'s equation for single-component distribution function (i.e., electron
+-- spectrum) can be used:
+-- \[\partial_t f_e = \hat A_{00} f_e.\]
 
--- hatA for BE with electrons only
+-- |\(\hat A_{00}\), as described in /Artemenko 2019/. The arguments are the same as in 'hatW'.
 hatA00 :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
 hatA00 b xa xb n = hatW b xa xb n R.-^ hatU b xa xb n
 
--- RHS for two-component BE, \partial_t f = \hat A f, where
---
---     |        |
---     |  f_e   |
--- f = |________|
---     |        |
---     | f_{ph} |
---     |        |
---
--- is a vector (column) and
---
---          |        |        |
---          | A_{00} | A_{01} |
--- \hat A = |________|________|,
---          |        |        |
---          | A_{10} | A_{11} |
---          |        |        |
---
--- where A_{00} can be computed with hatA00 function above.
--- Note that in the matrix representation A_{00}, A{01} and f_e concern the electrons with energy from
--- x_a to x_b, and A_{10}, A_{11} and f_{ph} concern the photons with energy from 0 to x_b - x_a
--- (inclusive). The number of nodes in f_e and f_{ph} is the same. It is natural to take into
--- account this energy interval for the photons, as long as for the electrons we use [x_a,
--- x_b].
--- Note that it is assumed thet the electron distribution function is far from x_a, because the
--- electrons and the photon emission are not treated correctly near x_a.
+-- $Matrices-2c
+-- In two-component representation of the distribution function 2x1 block matrix is used:
+-- \[
+-- f = \left( \begin{array}{c}
+--   f_e \\
+--   f_{ph}
+-- \end{array} \right),
+-- \]
+-- with \(f_e\) represented by values at the nodes
+-- \(x_a, x_a + \Delta x, x_a + 2 \Delta_x, ...  x_b\) and \(f_{ph}\) by values at the nodes
+-- \(0, \Delta x, ...  x_b - x_a\). In two-component representation the right-hand-side of
+-- Boltzmann\'s equation is a 2x2 block matrix:
+-- \[
+-- \partial_t f = \left( \begin{array}{cc} \hat A_{00} & \hat 0 \\
+--                                         \hat A_{10} & \hat 0
+--                       \end{array} \right) f.
+-- \]
 
--- this function makes a permutation of hatW elements, e.g.
--- | 0  1->0  2->0  3->0 |      | 0   0     0     0   |
--- | 0   0    2->1  3->1 |      | 0  1->0  2->1  3->2 |
--- | 0   0     0    3->2 |  =>  | 0   0    2->0  3->1 |,
--- | 0   0     0     0   |      | 0   0     0    3->0 |
--- where, for instance, 3->2 means w(xa + 3 dx -> xa + 2 * dx). This ensures the energy
--- conservation (?).
+-- |\(\hat A_{10}\), as described in /Artemenko 2019/. The arguments are the same as in 'hatW'.
 hatA10 :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
 hatA10 b xa xb n = R.traverse
   (hatW b xa xb n)
