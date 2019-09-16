@@ -289,6 +289,9 @@ instance Num a => Num (Matrix21 a) where
     (+) (M21 x y) (M21 z t) = M21 (x + z) (y + t)
     fromInteger x = M21 (fromInteger x) (fromInteger x)
 
+instance Functor Matrix21 where
+  fmap f (M21 x y) = M21 (f x) (f y)
+
 newtype instance MVector s (Matrix21 a) = MV_Matrix21 (MVector s (a, a))
 newtype instance Vector    (Matrix21 a) = V_Matrix21  (Vector    (a, a))
 

@@ -48,6 +48,10 @@ docs, e.g.
 
 which can be then open with an internet browser.
 
+## Tests
+
+...
+
 ## Acknowledgments
 
 Development of this code is supported by the Russian Science Foundation through Grant No.

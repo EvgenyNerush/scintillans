@@ -139,6 +139,7 @@ hatU b xa xb n = R.fromFunction (R.Z R.:. n R.:. n)
     R.sumAllS $ R.slice (hatW b xa xb n) (R.Any R.:. j)
 
 -- $Matrices-1c
+-- #M1c#
 -- If one is interested only in the electron spectrum and pair photoproduction is not taken into
 -- account, then Boltzmann\'s equation for single-component distribution function (i.e., electron
 -- spectrum) can be used:
@@ -149,6 +150,7 @@ hatA00 :: Double -> Double -> Double -> Int -> R.Array R.D R.DIM2 Double
 hatA00 b xa xb n = hatW b xa xb n R.-^ hatU b xa xb n
 
 -- $Matrices-2c
+-- #M2c#
 -- In two-component representation of the distribution function 2x1 block matrix is used:
 -- \[
 -- f = \left( \begin{array}{c}

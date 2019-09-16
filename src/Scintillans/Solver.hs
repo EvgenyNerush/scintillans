@@ -27,7 +27,7 @@ class Multable a b c | a b -> c where
   mult :: a -> b -> c
 
 -- |Multiplication of Repa matrices (or block matrices represented as Repa matrices), as in linear
--- algebra.
+-- algebra. The elements of the resulting matrix are computed sequentially.
 mmultS :: (Unbox a, Unbox b, Unbox c, Num c, Multable a b c)
        => R.Array R.U R.DIM2 a -- ^\(\hat A\)
        -> R.Array R.U R.DIM2 b -- ^\(\hat B\)
@@ -49,7 +49,7 @@ mmultS arr brr
     where (R.Z R.:. ha R.:. wa) = R.extent arr
           (R.Z R.:. hb R.:. wb) = R.extent brr
 
--- |@idMatrix n@ is the identity @nxn@ matrix.
+-- |@idMatrix n@ is the @nxn@ identity matrix.
 idMatrix :: (Num a, Unbox a) => Int -> R.Array R.U R.DIM2 a
 idMatrix n = R.computeS $ R.fromFunction (R.Z R.:. n R.:. n) $ \(R.Z R.:. i R.:. j) ->
   if i == j then fromInteger 1 else fromInteger 0
