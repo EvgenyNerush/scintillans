@@ -7,6 +7,7 @@ import qualified Hedgehog.Range as Range
 import Hedgehog
 import Scintillans.BlockMatrix
 import Scintillans.Solver
+import Scintillans
 
 -----------------
 -- Hedgehog tests
@@ -99,6 +100,21 @@ prop_M31_unitary =
         x = fromListM31 xs
         norm (M31 x y z) = x * x + y * y + z * z
     (abs ((norm $ a `mult` b `mult` c `mult` x) - (norm x)) < 1e-15) === True
+
+-- Zipping and converting to a list, back and forth.
+prop_zipM_unzipM :: Property
+prop_zipM_unzipM =
+  property $ do
+    let n = 10
+    arr <- forAll $ nRandomNumbers n
+    brr <- forAll $ nRandomNumbers n
+    crr <- forAll $ nRandomNumbers n
+    let xs   = M11 arr
+        xs'  = M21 arr brr
+        xs'' = M31 arr brr crr
+    (unzipM . toList . fromList . zipM) xs   === xs
+    (unzipM . toList . fromList . zipM) xs'  === xs'
+    (unzipM . toList . fromList . zipM) xs'' === xs''
 
 tests :: IO Bool
 tests = checkParallel $$(discover)

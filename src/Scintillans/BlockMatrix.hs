@@ -13,23 +13,30 @@ import Scintillans.Solver
 
 -- 1x1 matrix
 data Matrix11 a = M11 !a
+  deriving (Eq, Show)
 
 -- 1x2 matrix, i.e. M12 x y= | x y |
 data Matrix12 a = M12 !a !a
+  deriving (Eq, Show)
 
 -- 2x1 matrix, i.e. M21 x y = | x |
 --                            | y |
 data Matrix21 a = M21 !a !a
+  deriving (Eq, Show)
 
 -- M22 a00 a01 a10 a11 = | a00 a01 |
 --                       | a10 a11 |
 data Matrix22 a = M22 !a !a !a !a
+  deriving (Eq, Show)
 
 data Matrix13 a = M13 !a !a !a
+  deriving (Eq, Show)
 
 data Matrix31 a = M31 !a !a !a
+  deriving (Eq, Show)
 
 data Matrix33 a = M33 !a !a !a !a !a !a !a !a !a
+  deriving (Eq, Show)
 
 ------------
 -- Multables
