@@ -26,8 +26,8 @@ import Data.Vector.Unboxed
 class Multable a b c | a b -> c where
   mult :: a -> b -> c
 
--- |Multiplication of Repa matrices (or block matrices represented as Repa matrices), as in linear
--- algebra. The elements of the resulting matrix are computed sequentially.
+-- |Multiplication of Repa matrices (or block matrices represented as Repa matrices), as in the
+-- linear algebra. The elements of the resulting matrix are computed sequentially.
 mmultS :: (Unbox a, Unbox b, Unbox c, Num c, Multable a b c)
        => R.Array R.U R.DIM2 a -- ^\(\hat A\)
        -> R.Array R.U R.DIM2 b -- ^\(\hat B\)

@@ -17,16 +17,28 @@
 -- Here only photon emission is taken into account; @fe@ and @fph@ are the found distributions of
 -- the electrons and the photons, respectively, @b@ is the magnetic field strength, @dt@ is the
 -- time step and @nt@ is the number of time steps used to compute the solution. Note the type
--- specification @:: Block Matrix22@ that explicitly indicates two-component version of the matrix
--- \(\hat S\). For details on block matrix representation of \(f\) and \(\hat S\), see
--- "Scintillans.BlockMatrix".
+-- specification @:: Block Matrix22@ that explicitly indicates two-component (for electrons and
+-- photons) version of the matrix \(\hat S\). Functions 'zipM', 'fromList', 'toList' and 'unzipM'
+-- are needed to convert distribution functions to (or from) internal /Scintillans/ representation,
+-- which uses Repa arrays for the sake of performance (see "Scintillans.BlockMatrix" for details).
+-- Before (after) the conversion to (from) the internal representations, block matrices are just
+-- matrices that consist of blocks. For instance,
 --
--- The distribution functions are lists of values at @nx@ equidistant grid nodes placed from the
--- bottom energy boundary @xa@ to the top energy boundary @xb@ (both inclusive). @f0@ is the
--- initial particle distribution, e.g. a monoenergetic beam of electrons with energy of
--- @xb@ accompanied with no photons:
+-- > M22 a00 a01 a10 a11 = | a00 a01 |
+-- >                       | a10 a11 |,
+--
+-- whenewer @a00@ etc. are, or, for example @M12 [1, 2] [3, 4]@ is the matrix @| [1, 2] [3, 4] |@.
+--
+-- The distribution function @fe@ here is the list of values at @nx@ equidistant grid nodes placed
+-- from the bottom energy boundary @xa@ to the top energy boundary @xb@ (both inclusive). For the
+-- photons, @fph@ starts at @0@ and ends at @(xb - xa)@ (both inclusive) in the two-component
+-- representation and boundaries of @fph@ are the same as for @fe@ in the three-component
+-- representation. See "Scintillans.Synchrotron#M1c" for details.
+--
+-- @f0@ is the initial particle distribution, e.g. a monoenergetic beam of electrons with energy of
+-- @xb@ accompanied with zero photon distribution function:
 -- 
--- > f0 = M22 (diracDelta nx $ deltaX xa xb nx) zeros
+-- > f0 = M21 (diracDelta nx $ deltaX xa xb nx) zeros
 --
 -- See 'fromList'' for one more example on how to set the initial particle distribution.
 

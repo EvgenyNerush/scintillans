@@ -2,6 +2,12 @@
            , TypeFamilies
            , BangPatterns #-}
 
+-- |Data types to represent simple matrices. This types look simple, however, if used together with
+-- "Data.Array.Repa" arrays, they are stored very efficiently. For instance, an array with elements
+-- @M13 x_i y_i z_i@, @i=1..N@, is stored as three separate arrays: array of @xs@, array of @ys@
+-- and array of @zs@. Thus, there is no overhead for @M13@ constructor, and the storage is optimal
+-- from the point of view of the CPU cache.
+
 module Scintillans.BlockMatrix where
 
 import qualified Data.Array.Repa             as R
@@ -11,30 +17,49 @@ import Data.Vector.Unboxed
 import Control.Monad ( liftM )
 import Scintillans.Solver
 
--- 1x1 matrix
+-- |1x1 matrix
 data Matrix11 a = M11 !a
   deriving (Eq, Show)
 
--- 1x2 matrix, i.e. M12 x y= | x y |
+-- |1x2 matrix, i.e. @M12 x y = | x y |@
 data Matrix12 a = M12 !a !a
   deriving (Eq, Show)
 
--- 2x1 matrix, i.e. M21 x y = | x |
---                            | y |
+-- |2x1 matrix, i.e.
+--
+-- > M21 x y = | x |
+-- >           | y |
+--
 data Matrix21 a = M21 !a !a
   deriving (Eq, Show)
 
--- M22 a00 a01 a10 a11 = | a00 a01 |
---                       | a10 a11 |
+-- |2x2 matrix, i.e.
+--
+-- > M22 a00 a01 a10 a11 = | a00 a01 |
+-- >                       | a10 a11 |
+--
 data Matrix22 a = M22 !a !a !a !a
   deriving (Eq, Show)
 
+-- |1x3 matrix, i.e. @M13 x y z = | x y z |@
 data Matrix13 a = M13 !a !a !a
   deriving (Eq, Show)
 
+-- |3x1 matrix, i.e.
+--
+-- > M31 x y z = | x |
+-- >             | y |
+-- >             | z |
+--
 data Matrix31 a = M31 !a !a !a
   deriving (Eq, Show)
 
+-- |3x3 matrix, i.e.
+--
+-- > M33 a00 a01 a02 a10 a11 a12 a20 a21 a22 = | a00 a01 a02 |
+-- >                                           | a10 a11 a12 |
+-- >                                           | a20 a21 a22 |
+--
 data Matrix33 a = M33 !a !a !a !a !a !a !a !a !a
   deriving (Eq, Show)
 
@@ -42,13 +67,14 @@ data Matrix33 a = M33 !a !a !a !a !a !a !a !a !a
 -- Multables
 ------------
 
--- E.g., multiplication of 1x3 matrix to 3x1 matrix results 1x1 matrix
-instance Num a => Multable (Matrix13 a) (Matrix31 a) (Matrix11 a) where
-  mult (M13 u v w) (M31 x y z)  = M11 $ u * x + v * y + w * z
-
 instance Num a => Multable (Matrix11 a) (Matrix11 a) (Matrix11 a) where
   mult (M11 x) (M11 y) = M11 (x * y)
 
+-- |E.g., multiplication of 1x3 matrix to 3x1 matrix results 1x1 matrix
+instance Num a => Multable (Matrix13 a) (Matrix31 a) (Matrix11 a) where
+  mult (M13 u v w) (M31 x y z)  = M11 $ u * x + v * y + w * z
+
+-- |Multiplication of 2x2 matrix to 2x1 matrix results 2x1 matrix
 instance Num a => Multable (Matrix22 a) (Matrix21 a) (Matrix21 a) where
   mult (M22 x y z t) (M21 u v) = M21 (x * u + y * v) (z * u + t * v)
 
