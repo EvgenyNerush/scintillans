@@ -5,12 +5,12 @@
 -- normalization used here.
 --
 -- To find particle distribution \(f\) one should first prepare initial particle distribution,
--- \(f_0\).  Second, he/she should prepare matrix \(\hat S\) and apply it to \(f_0\),
--- \(f = \hat S f_0\). Then, one can extract electron, photon and positron spectra with pattern
--- matching. All this chain can be expressed as follows:
+-- \(f_0\).  Second, he/she should prepare matrix \(\hat S\) with @hatS@ function and apply it to
+-- \(f_0\), \(f = \hat S f_0\). Then, one can extract electron, photon and positron spectra with
+-- pattern matching. All this chain can be expressed as follows:
 --
 -- > M21 fe fph = unzipM . toList
--- >            $ mmultS (hatS b xa xb nx dt nt :: Block Matrix22)
+-- >            $ mmultS (hatS model b xa xb nx dt nt :: Block Matrix22)
 -- >            $ fromList . zipM
 -- >            $ f0
 --
@@ -51,16 +51,18 @@ module Scintillans
   , fromList'
   , fromList
   , toList
+  , Model(..)
   , Block
-  , S (hatS)
+  , S(..)
   , mmultS
   ) where
 
 import qualified Data.Array.Repa   as R
-import Scintillans.Solver          as S
+import Scintillans.Solver          as Sol
 import Data.Vector.Unboxed (Unbox)
 import Scintillans.BlockMatrix
 import Scintillans.Synchrotron
+import Scintillans.SynchrotronClassical
 
 -- |Step of the energy grid, @deltaX xa xb nx = (xb - xa) / (nx - 1)@.
 deltaX :: Double -> Double -> Int -> Double
@@ -139,12 +141,18 @@ toList :: (Unbox a) =>
        -> [a]                  -- ^\(f\) as a list
 toList = R.toList
 
--- |Alias for block matrix type.
+-- |Type pointing which model to use, e.g. the Baier-Katkov-Strakhovenko quantum model (@BKS@) or
+-- the classical one (@Classical@). Constructors @Model1@ - @Model4@ can be used for user-defined
+-- models.
+data Model = BKS | Classical | Model1 | Model2 | Model3 | Model4
+
+-- |Alias for the block matrix type.
 type Block (m :: * -> *) = R.Array R.U R.DIM2 (m Double)
 
 class S m where
   -- |\(\hat S\), a matrix which propagates distribution functions in time from 0 to @t = nt * dt@.
-  hatS :: Double -- ^magnetic field strength
+  hatS :: Model  -- ^a model to use, e.g. @BKS@ or @Classical@
+       -> Double -- ^magnetic field strength
        -> Double -- ^lower energy boundary
        -> Double -- ^upper energy boundary
        -> Int    -- ^dimension of the vector space which represents \(f_e\)
@@ -154,12 +162,15 @@ class S m where
 
 -- |Instance for single-component distribution function, see "Scintillans.Synchrotron#M1c".
 instance S Matrix11 where
-  hatS b xa xb nx dt nt = S.exp hatA dt nt
-    where hatA = R.computeS $ R.map (\x -> M11 x) $ hatA00 b xa xb nx
+  hatS BKS       b xa xb nx dt nt = Sol.exp hatA dt nt
+    where hatA = R.computeS $ R.map (\x -> M11 x) $ hatA00   b xa xb nx
+  hatS Classical b xa xb nx dt nt = Sol.exp hatA dt nt
+    where hatA = R.computeS $ R.map (\x -> M11 x) $ hatA00Cl b xa xb nx
 
--- |Instance for two-component distribution function, see "Scintillans.Synchrotron#M2c".
+-- |Instance for two-component distribution function based on the quantum formulas, see
+-- "Scintillans.Synchrotron#M2c".
 instance S Matrix22 where
-  hatS b xa xb nx dt nt = S.exp hatA dt nt
+  hatS BKS b xa xb nx dt nt = Sol.exp hatA dt nt
     where hatA = R.computeS $ R.traverse2
             (hatA00 b xa xb nx)
             (hatA10 b xa xb nx)
@@ -169,3 +180,4 @@ instance S Matrix22 where
                                                 (lf' (R.Z R.:. i R.:. j))
                                                 0
             )
+

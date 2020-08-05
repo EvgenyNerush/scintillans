@@ -1,21 +1,20 @@
--- |This module provides numerical approximations for probabilityes of photon emission and pair
+-- |This module provides numerical approximations for probabilityes of the photon emission and pair
 -- photoproduction in a constant magnetic field \(B\) which is perpendicular to the particle
--- velocity, in a synchrotron regime. See [Quantum Electrodynamics, V. B. Berestetskii, E. M.
--- Lifshitz and L. P. Pitaevskii, Pergamon, 1982] for details.
+-- velocity, in a synchrotron regime. See [Electromagnetic processes at high energies in oriented
+-- single crystals, V. N. Baier, V.M. Katkov and V.M. Strakhovenko, World Scientific, Singapore,
+-- 1998] and [Quantum Electrodynamics, V. B. Berestetskii, E. M.  Lifshitz and L. P. Pitaevskii,
+-- Pergamon, 1982] for details.
 --
--- Here time is normalized to the radiation formation time
--- \[t_{rf} = m c / (e B),\]
--- and energy \(x\) is normalized to the rest-mass electron energy, \(mc^2\).  The first parameter
--- of the probabilities, \(b\), is the magnetic field strength \(B\) normalized to the
+-- Here time is normalized to the classical radiation formation time \[t_{rf} = m c / (e B),\] and
+-- energy \(x\) is normalized to the rest-mass electron energy, \(mc^2\).  The first parameter of
+-- the probabilities, \(b\), is the magnetic field strength \(B\) normalized to the
 -- Sauter-Schwinger (critical) field \(B_S = m^2 c^3 / e \hbar\). For these units \(\chi = b x\),
 -- where, again, \(x\) is the normalized electron energy.
 --
 -- Note that the radiation time, i.e. time on that one photon is emitted on average, is about
--- \[t_{rad} \sim 1 / \alpha\]
--- in the classical limit ( \(\chi \ll 1\) ) and is
--- \[t_{rad} \sim \chi^{1/3} / \alpha\]
--- in the quantum limit ( \(\chi \gg 1\) ). In the "Scintillans.Solver" one should use the
--- timestep \(\Delta t \ll t_{rad}\).
+-- \[t_{rad} \sim 1 / \alpha\] in the classical limit ( \(\chi \ll 1\) ) and is \[t_{rad} \sim
+-- \chi^{1/3} / \alpha\] in the quantum limit ( \(\chi \gg 1\) ). In the "Scintillans.Solver" one
+-- should use the timestep \(\Delta t \ll t_{rad}\).
 
 module Scintillans.Synchrotron
   ( -- *Probabilities

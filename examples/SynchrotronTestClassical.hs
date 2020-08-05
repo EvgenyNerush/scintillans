@@ -1,13 +1,13 @@
 import qualified Data.Array.Repa         as R
-import qualified Scintillans.Solver      as S
+import qualified Scintillans.Solver      as Sol
 import Scintillans.Synchrotron
 import Scintillans.BlockMatrix
 import Scintillans.Solver
 
--- Here we test the classical limit of QED synchrotron emission probability by comparison with the
--- results of the approach using the Landau--Lifshitz radiation reaction force. Namely, we compare
--- the mean particle energy with the theoretical value obtained with Landau--Lifshitz (LL) force. See
--- Eq. (A7) in Appendix A of Ref. [A. S. Samsonov et al., PRA, 2018,
+-- Here we test the classical limit of QED synchrotron emission probability by comparison it with
+-- the results of the approach which uses the Landau--Lifshitz radiation reaction force. Namely, we
+-- compare the mean particle energy with the theoretical value obtained with Landau--Lifshitz (LL)
+-- force. See Eq. (A7) in Appendix A of Ref. [A. S. Samsonov et al., PRA, 2018,
 -- https://arxiv.org/abs/1807.04071], that in the units used in Scintillans reads as
 -- gamma = gamma0 / (1 + (2/3) * alpha * b * gamma0 * t)
 
@@ -42,7 +42,7 @@ nt = round $ t / dt
 hatA :: R.Array R.U R.DIM2 (Matrix11 Double)
 hatA = R.computeS $ R.map (\x -> M11 x) $ hatA00 b xl x0 n
 
-sol = S.exp hatA dt nt
+sol = Sol.exp hatA dt nt
 
 -- initially \int_0^x_0 f_0 (x) dx = 1
 f0 = R.fromListUnboxed (R.Z R.:. n R.:. (1 :: Int))

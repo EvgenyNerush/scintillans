@@ -1,5 +1,5 @@
 import qualified Data.Array.Repa         as R
-import qualified Scintillans.Solver      as S
+import qualified Scintillans.Solver      as Sol
 import Scintillans.Synchrotron
 import Scintillans.BlockMatrix
 import Scintillans.Solver
@@ -34,7 +34,7 @@ hatA = R.computeS $ R.traverse2
                                       0
   )
 
-sol = S.exp hatA dt nt
+sol = Sol.exp hatA dt nt
 
 -- for electrons \int_0^\x_0 f_0 (x) dx = 1
 f0 :: R.Array R.U R.DIM2 (Matrix21 Double)

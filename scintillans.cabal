@@ -1,7 +1,7 @@
 -- Cabal documentation, see http://haskell.org/cabal/users-guide/
 
 name:                scintillans
-version:             0.3.0
+version:             0.4.0
 license:             BSD3
 license-file:        LICENSE
 author:              Evgeny Nerush
@@ -11,10 +11,11 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Scintillans.BlockMatrix
+  exposed-modules:     Scintillans
+                     , Scintillans.BlockMatrix
                      , Scintillans.Solver
                      , Scintillans.Synchrotron
-                     , Scintillans
+                     , Scintillans.SynchrotronClassical
   other-modules:       Tests
   build-depends:       base >=4.9
                      , repa >= 3.0

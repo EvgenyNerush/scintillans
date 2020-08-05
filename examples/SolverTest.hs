@@ -1,5 +1,5 @@
 import qualified Data.Array.Repa as R
-import qualified Scintillans.Solver  as S
+import qualified Scintillans.Solver  as Sol
 import Scintillans.BlockMatrix
 
 {-- The exponent of the matrix
@@ -30,7 +30,7 @@ hatA = R.fromListUnboxed (R.Z R.:. (2 :: Int) R.:. (2 :: Int)) [M11 a, M11 b, M1
 n = 1000 :: Int
 dt = (1 / fromIntegral n) :: Double
 
-[x, y, u, v] = R.toList $ R.map (\(M11 x) -> x) $ S.exp hatA dt n
+[x, y, u, v] = R.toList $ R.map (\(M11 x) -> x) $ Sol.exp hatA dt n
 
 accuracy = 15 / fromIntegral n -- Euler's absolute accuracy is proportional to 1 / n
 res = (abs $ x - exp a) < accuracy

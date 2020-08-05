@@ -1,6 +1,6 @@
 OBJS =  makefile ../src/Scintillans/BlockMatrix.hs ../src/Scintillans/Solver.hs ../src/Scintillans/Synchrotron.hs
 
-all: BlockMatrixTest SolverTest IntAiTest WTest SynchrotronTestClassical PhotonEmissionTest
+all: BlockMatrixTest SolverTest IntAiTest WTest SynchrotronTestClassical PhotonEmissionTest SynchrotronClassicalTest
 
 BlockMatrixTest: $(OBJS) BlockMatrixTest.hs
 	stack build && stack ghc -- -Odph -rtsopts -eventlog -fno-liberate-case -funfolding-use-threshold1000 -funfolding-keeness-factor1000 -fllvm -optlo-O3 --make BlockMatrixTest.hs && ./BlockMatrixTest +RTS -l
@@ -20,5 +20,8 @@ SynchrotronTestClassical: $(OBJ) SynchrotronTestClassical.hs
 PhotonEmissionTest: $(OBJ) PhotonEmissionTest.hs
 	stack build && stack ghc -- -O2 --make PhotonEmissionTest.hs && ./PhotonEmissionTest
 
+SynchrotronClassicalTest: $(OBJ) SynchrotronClassicalTest.hs
+	stack build && stack ghc -- -O2 --make SynchrotronClassicalTest.hs && ./SynchrotronClassicalTest
+
 clean:
-	rm -I BlockMatrixTest SolverTest IntAiTest WTest SynchrotronTestClassical PhotonEmissionTest
+	rm -I BlockMatrixTest SolverTest IntAiTest WTest SynchrotronTestClassical PhotonEmissionTest SynchrotronClassicalTest
