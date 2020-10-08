@@ -44,6 +44,7 @@
 
 module Scintillans
   ( deltaX
+  , energyGrid
   , zeros
   , diracDelta
   , Zippable (zipM)
@@ -67,6 +68,11 @@ import Scintillans.SynchrotronClassical
 -- |Step of the energy grid, @deltaX xa xb nx = (xb - xa) / (nx - 1)@.
 deltaX :: Double -> Double -> Int -> Double
 deltaX xa xb nx = (xb - xa) / (fromIntegral $ nx - 1)
+
+-- |Electron energy grid, i.e. nodes where values of the spectrum \(f_e\) are given
+energyGrid :: Double -> Double -> Int -> [Double]
+energyGrid xa xb nx = [xa + dx * fromIntegral i | i <- [0..(nx -1)]]
+  where dx = deltaX xa xb nx
 
 -- |@[0,0..]@
 zeros :: Num a => [a]
@@ -141,10 +147,11 @@ toList :: (Unbox a) =>
        -> [a]                  -- ^\(f\) as a list
 toList = R.toList
 
--- |Type pointing which model to use, e.g. the Baier-Katkov-Strakhovenko quantum model (@BKS@) or
--- the classical one (@Classical@). Constructors @Model1@ - @Model4@ can be used for user-defined
--- models.
-data Model = BKS | Classical | Model1 | Model2 | Model3 | Model4
+-- |Type pointing which model to use, e.g. the Baier-Katkov-Strakhovenko quantum model (@BKS@), the
+-- classical one where radiation recoil is neglected (@Classical@) or model based on
+-- Landau-Lifshitz radiation force (@LL@) which neglects both radiation recoil and stochasticity.
+-- Constructors @Model1@ - @Model4@ can be used for user-defined models.
+data Model = BKS | Classical | LL | Model1 | Model2 | Model3 | Model4
 
 -- |Alias for the block matrix type.
 type Block (m :: * -> *) = R.Array R.U R.DIM2 (m Double)
@@ -166,7 +173,22 @@ instance S Matrix11 where
     where hatA = R.computeS $ R.map (\x -> M11 x) $ hatA00   b xa xb nx
   hatS Classical b xa xb nx dt nt = Sol.exp hatA dt nt
     where hatA = R.computeS $ R.map (\x -> M11 x) $ hatA00Cl b xa xb nx
-
+  -- Here formulas from Chapter 76 of [L.D. Landau, E.M. Lifshitz, The Classical Theory of Fields]
+  -- are used: 1 / epsilon(t) = 1 / epsilon(0) + (2/3) \alpha b t. Note that the method used here
+  -- is accurate, i.e. it conserves the number of particles.
+  hatS LL        b xa xb nx dt nt = R.computeS
+    $ R.fromFunction (R.Z R.:. nx R.:. nx) f
+    where f (R.Z R.:. i R.:. j) = if      k == i     then M11 rRight
+                                  else if k == i - 1 then M11 rLeft
+                                  else                    M11 0
+            where x0  = dx * fromIntegral j
+                  x   = 1 / ( 1 / x0 + (2/3) * alpha * b * dt * fromIntegral nt )
+                  dx = deltaX xa xb nx
+                  xdx = x / dx
+                  k   = floor $ xdx
+                  rLeft  = xdx - fromIntegral k
+                  rRight = 1 - rLeft
+     
 -- |Instance for two-component distribution function based on the quantum formulas, see
 -- "Scintillans.Synchrotron#M2c".
 instance S Matrix22 where
