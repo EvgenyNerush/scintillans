@@ -181,10 +181,10 @@ instance S Matrix11 where
     where f (R.Z R.:. i R.:. j) = if      k == i     then M11 rRight
                                   else if k == i - 1 then M11 rLeft
                                   else                    M11 0
-            where x0  = dx * fromIntegral j
+            where x0  = xa + dx * fromIntegral j
                   x   = 1 / ( 1 / x0 + (2/3) * alpha * b * dt * fromIntegral nt )
                   dx = deltaX xa xb nx
-                  xdx = x / dx
+                  xdx = (x - xa) / dx
                   k   = floor $ xdx
                   rLeft  = xdx - fromIntegral k
                   rRight = 1 - rLeft

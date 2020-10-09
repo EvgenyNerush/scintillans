@@ -10,7 +10,7 @@ xa = 1e2
 xb = 1e3
 nx = 100
 
-b = 1e-4
+b = 2e-4
 
 t  = 1e3
 dt = 0.1 / alpha
@@ -42,7 +42,7 @@ accuracy = 1e-3
 
 v =  (abs $ numberOfParticles - 1) < accuracy
   && (abs $ xc - meanEnergy) / xc  < accuracy
-  && sigma < dx / 4
+  && sigma < dx / 2
 
 main =
   if v then
@@ -50,9 +50,6 @@ main =
   else do
     putStrLn "LLTest: \x1b[1;31mfailed\x1b[0m"
     print numberOfParticles
-    print meanEnergy
-    print sigma
-    putStrLn "---"
-    print 1.0
     print xc
-    print dx
+    print meanEnergy
+    print $ sigma / dx
