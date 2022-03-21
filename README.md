@@ -54,5 +54,6 @@ which can be then open with an internet browser.
 
 ## Acknowledgments
 
-Development of this code is supported by the Russian Science Foundation through Grant No.
-18-72-00121
+Development of this code have been supported by the Russian Science Foundation till 2020, through
+Grant No. 18-72-00121
+

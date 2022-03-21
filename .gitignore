@@ -1,3 +1,6 @@
 .stack-work
 examples/*
 !examples/*.hs
+src/Scintillans/*.hi
+src/Scintillans/*.o
+stack.yaml.lock
